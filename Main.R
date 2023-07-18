@@ -26,9 +26,12 @@ avra <- read_excel("DATOS FIANZAS 2022.xls",
 avra <- avra %>% mutate(id_ams = row_number())
 colnames(avra) <- tolower(colnames(avra))
 avra$duracion_contrato_años <- sub(",", ".", avra$duracion_contrato_años)
-avra$duracion_contrato_años <- as.numeric(avra$duracion_contrato_años)
-avra$num_habitaciones <- as.numeric(avra$num_habitaciones)
-avra$número_806 <- as.numeric(avra$número_806)
+avra$duracion_contrato_años <- round(as.numeric(avra$duracion_contrato_años), 2)
+avra$num_habitaciones <- as.integer(avra$num_habitaciones)
+avra$número_806 <- as.integer(avra$número_806)
+avra$importe_de_la_fianza <- as.integer(avra$importe_de_la_fianza)
+avra$importe_de_la_renta <- as.integer(avra$importe_de_la_renta)
+avra$nif_cif_arrendador_anonimizado <- as.character(avra$nif_cif_arrendador_anonimizado)
 avra$rc_parcela <- substr(avra$referencia_catastral, 1, 14)
 
 #Añado campos para facilitar la corrección de Ref Catastrales erróneas en la
@@ -37,6 +40,7 @@ avra <- avra %>%
   group_by(referencia_catastral) %>%
   mutate( avra_rc_repet = n())
 
+# Guardo una copia de los datos originales
 avra_datos_originales <- avra
 # AQUI SE PODRÍAN INSERTAR LAS CORRECCIONES
 
@@ -64,10 +68,7 @@ esquema <- "tmp_avra_alquiler"
 consulta <- paste("SELECT EXISTS(SELECT 1 FROM information_schema.schemata 
                   WHERE schema_name = '", esquema, "')")
 
-consulta <- paste("SELECT EXISTS(SELECT 1 FROM information_schema.schemata 
-                  WHERE schema_name = '", esquema, "')")
-
-consulta <- "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'tmp_avra_alquiler'"
+#consulta <- "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'tmp_avra_alquiler'"
 
 resultado <- dbGetQuery(con_owner, consulta)
 
@@ -272,7 +273,7 @@ CREATE TABLE tmp_avra_alquiler.fianzas_2022
 (
   codigo_expediente__rue character varying(30) NOT NULL,
   numero_documento character varying(15),
-  nif_cif_arrendador_anonimizado integer,
+  nif_cif_arrendador_anonimizado character varying(10),
   sexo_arrendador character varying(1),
   tipo_persona_arrendador character varying(1),
   tipo_entidad_arrendador character varying(100),
@@ -288,13 +289,13 @@ CREATE TABLE tmp_avra_alquiler.fianzas_2022
   escalera_806 character varying(10),
   planta_806 character varying(10),
   puerta_806 character varying(10),
-  duracion_contrato_años real,
+  duracion_contrato_años numeric(5,2),
   fecha_devengo date,
   num_habitaciones integer,
   tipo_de_arrendamiento character varying(15),
   tipo_actualizacion character varying(50),
-  importe_de_la_renta real,
-  importe_de_la_fianza real,
+  importe_de_la_renta integer,
+  importe_de_la_fianza integer,
   id_ams integer,
   avra_rc_repet integer,
   delegacio character varying(2),
@@ -450,8 +451,22 @@ con_ajms <- dbConnect(RPostgres::Postgres(),
 #                   ON t1.id_bi = t2.id_bi"
 
 consulta <- "SELECT t1.*,
-                     t2.idvcat, t2.tip_const4d_14, t2.stotalocal_14, t2.a_ant_bim,
-                     t3.sup AS sup_parcela, coorx, coory
+                     t2.idvcat,
+                     t2.clase_bim_15,
+                     t2.grupo_bim_15,
+                     t2.destino_dgc_14,
+                     t2.tip_const4d_14,
+                     t2.categoria_const_14,
+                     t2.tipviv,
+                     t2.stotalocal_14, 
+                     t2.a_ant_bim,
+                     t2.h2o,
+                     t2.ea,
+                     t2.app,
+                     
+                     t3.sup AS sup_parcela, 
+                     t3.coorx,
+                     t3.coory
              FROM tmp_avra_alquiler.fianzas_2022 AS t1
              LEFT JOIN catastro2022.modelo_vivienda_20221011 AS t2
                   ON t1.id_bi = t2.id_bi
@@ -478,7 +493,7 @@ resultado <- resultado %>% group_by(id_ams) %>% mutate (comp = n())
 #si el enlace ha dado un registro pero sin valores es que no existe dicha referencia
 #pongo el valor a 0 ya que de lo contrario vale NA
 
-resultado$comp <- ifelse(is.na(resultado$idvcat), 0, resultado$comp)
+resultado$comp <- as.integer(ifelse(is.na(resultado$idvcat), 0, resultado$comp))
 
 #Por último añado los registros cuya Ref Catastral no era encontrada en la capa
 #de parcelas
@@ -494,7 +509,6 @@ resumen <- avra_catastro %>%
   group_by(id_ams,comp) %>%
   summarise() %>%
   mutate (comp_t = ifelse(comp > 1, "N", as.character(comp)))
-
 
 frecuencias_absolutas <- table(resumen$comp_t)
 frecuencias_relativas <- prop.table(frecuencias_absolutas)
@@ -549,14 +563,23 @@ avra_catastro <- avra_catastro %>%
 
 rm(calcula_frecuencias)
 
+avra_catastro$cat.media_superf <- as.numeric(avra_catastro$cat.media_superf)
+avra_catastro$cat.mediana_superf <- as.numeric(avra_catastro$cat.mediana_superf)
 avra_catastro$stotalocal_14 <- as.integer(avra_catastro$stotalocal_14)
-avra_catastro$cat.media_superf <- as.integer(avra_catastro$cat.media_superf)
-#Fianzas_viviendas$cat.moda_superf <- as.integer(Fianzas_viviendas$cat.moda_superf)
-avra_catastro$cat.mediana_superf <- as.integer(avra_catastro$cat.mediana_superf)
-avra_catastro$a_ant_bim <- as.integer(avra_catastro$a_ant_bim)
+avra_catastro$sup_parcela <- as.integer(avra_catastro$sup_parcela)
 
+# Obtener el listado de campos tipo numerico
+campos_numericos <- sapply(avra_catastro, function(x) any(class(x) %in% c("numeric")))
 
+# Obtener los nombres de los campos tipo numerico
+nombres_campos_numericos <- names(avra_catastro)[campos_numericos]
+#nombres_campos_numericos
 
+#Redondear a 2 cifras decimales los campos numericos
+avra_catastro <- avra_catastro %>%
+  mutate_at(vars(all_of(nombres_campos_numericos)), ~ round(., digits = 2))
+
+rm(campos_numericos, nombres_campos_numericos)
 
 # añadir el campo codigo de INE del municipio. 
 # Voy a añadir el codigo ine que le corresponde a la referencia catastral
@@ -582,9 +605,9 @@ Municipios_catastro <- Municipios_catastro[,c("cod_dgc","cod_ine")]
 rm(consulta)
 
 avra_catastro <- avra_catastro %>%
-                     mutate(cod_dgc = paste0(delegacio,municipio),
-                            nif_cif_arrendador_anonimizado = 
-                              as.character(nif_cif_arrendador_anonimizado)) %>%
+                     mutate(cod_dgc = paste0(delegacio,municipio)) %>%
+                            # nif_cif_arrendador_anonimizado = 
+                            #   as.character(nif_cif_arrendador_anonimizado)) %>%
                      select(-delegacio, - municipio)
 
 avra_catastro <- left_join(avra_catastro, Municipios_catastro,
@@ -627,7 +650,9 @@ save.image("datos1.RData")
 
 rm(list =ls())
 load("datos1.RData")
+rm(tabla_frecuencias)
 
+# GRUPO 1
 # Me quedo con los registros que casan con mas de 1 vivienda y cuyo
 # coeficiente de variación es inferior a 2
 Fianzas_viviendas_N <- avra_catastro %>%
@@ -644,64 +669,46 @@ Fianzas_viviendas_N <- Fianzas_viviendas_N %>%
 
 # Como todos los registros de cada vivienda son identicos me puedo quedar con 
 # solo 1 de cada, para ello tomo los registros diferentes
-# La siguiente sentencia es mejorable buscando los registros identicos por 
-# el contenido de todos sus campos y no solo el campo id_ams pero no es facil
-# de hacer porque el dataframe contiene campos numericos y dan problema por la
-# precision con que se almacenan
-Fianzas_viviendas_N <- Fianzas_viviendas_N %>%
-  distinct(id_ams, .keep_all = TRUE)
+
+# Los campos numéricos dan problemas para ser comparados por la precisión con
+# que se almacenan. Para evitar dichos problemas los redondeo a dos cifras
 
 
-# Obtener el listado de campos tipo fecha
+# Obtener el listado de campos de tipo numerico (real) y redondearlos a dos dígitos
 campos_numericos <- sapply(Fianzas_viviendas_N, function(x) any(class(x) %in% c("numeric")))
-
-# Obtener los nombres de los campos tipo fecha
+# Obtener los nombres de los campos numericos
 nombres_campos_numericos <- names(Fianzas_viviendas_N)[campos_numericos]
-nombres_campos_numericos
-
-
-
-
-
-
-# Cambiar a tipo entero
-nuevo_dataframe <- Fianzas_viviendas_N %>%
-  mutate(across(any_of(nombres_campos_numericos), as.integer)) #funciona pero no coge los integer64
-
-
-
-nuevo_dataframe <- Fianzas_viviendas_N %>%
+# Redondeo
+Fianzas_viviendas_N <- Fianzas_viviendas_N %>%
   mutate_at(vars(all_of(nombres_campos_numericos)), ~ round(., digits = 2))
 
-
 # Obtener el dataframe con filas verdaderamente distintas
-nuevo_dataframe2 <- distinct(nuevo_dataframe, .keep_all = TRUE)
+Fianzas_viviendas_N <- distinct(Fianzas_viviendas_N, .keep_all = TRUE)
 
+rm(campos_numericos, nombres_campos_numericos)
 
-
-
-
-
-
-
-
-
-
+# GRUPO 2
 # Obtener tambien cuales se pierden para saber cuales son
 # Se pierden pero se podrian vincular a traves de bloque portal escalera
 Fianzas_viviendas_N_dist_tamanos <- avra_catastro %>%
   filter ((comp > 1 & cat.coef_var >= 2)) 
 
-# Me quedo con solo registro para cada una de las viviendas tengo
+# Me quedo con solo un registro para cada una de las viviendas tengo (el primero que pilla)
 Fianzas_viviendas_N_dist_tamanos_ID <- Fianzas_viviendas_N_dist_tamanos %>%
   distinct(id_ams, .keep_all = TRUE)
 
+# y elimino todos los campos añadidos
+# compruebo el lugar del último campo de la tabla original de avra
 posicion <- which(names(Fianzas_viviendas_N_dist_tamanos_ID) == "rfcd_parcela")
-
+# y me quedo solo con los campos originales
 Fianzas_viviendas_N_dist_tamanos_ID <- 
   Fianzas_viviendas_N_dist_tamanos_ID[,1:posicion]
 
 rm(posicion)
+
+
+
+# GRUPO 3
 # Los registros cuya referencia catastral no casa con ningún registro del catastro
 # Se pueden corregir intentando encontrar la referencia catastral correcta con 
 # ayuda de la Sede Electrónica del Catastro.
@@ -718,6 +725,7 @@ Fianzas_viviendas_0 <- avra_catastro %>%
 # 2548714UF7624N0001KE es referencia previa a división horizontal
 
 
+# GRUPO 4
 # Las viviendas de AVRA que casan con 1 vivienda en los datos IECA Catastro
 Fianzas_viviendas_1 <- avra_catastro %>%
   filter (comp == 1)
@@ -728,10 +736,11 @@ Fianzas_viviendas_1 <- avra_catastro %>%
 # pero si es con varias son de tamaño muy similar (coef. variación < 2)
 Fianzas_casan_1_vivienda <- bind_rows(Fianzas_viviendas_1, Fianzas_viviendas_N)
 rm(Fianzas_viviendas_1, Fianzas_viviendas_N)
+# Elimino campos estadísticos
 Fianzas_casan_1_vivienda <- Fianzas_casan_1_vivienda %>%
   select(-cat.media_superf, -cat.mediana_superf,
          -cat.moda_superf, -cat.desv_tip_superf,
-         -cat.frecuencias)
+         -cat.frecuencias, -cat.coef_var)
 
 # Los registros que no encontramos en catastro
 # o bien no existe la RC de parcela o si existe no hay bienes inmuebles vivienda
@@ -754,17 +763,8 @@ rm(Fianzas_viviendas_N_dist_tamanos)
 save.image("datos2.RData")
 
 # Exportar el dataframe a Excel
-write_xlsx(Fianzas_casan_1_vivienda, "Fianzas_casan_1_vivienda.xls")
-write_xlsx(Fianzas_no_casan_catastro, "Fianzas_no_casan_catastro.xls")
-write_xlsx(Fianzas_casan_distintas_viviendas, "Fianzas_casan_distintas_viviendas.xls")
+write_xlsx(Fianzas_casan_1_vivienda, "Fianzas_casan_1_vivienda.xlsx")
+write_xlsx(Fianzas_no_casan_catastro, "Fianzas_no_casan_catastro.xlsx")
+write_xlsx(Fianzas_casan_distintas_viviendas, "Fianzas_casan_distintas_viviendas.xlsx")
 write_xlsx(Fianzas_casan_distintas_viviendas_case,
-           "Fianzas_casan_distintas_viviendas_cases.xls")
-
-
-
-
-
-
-
-
-
+           "Fianzas_casan_distintas_viviendas_cases.xlsx")
