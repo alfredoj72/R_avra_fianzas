@@ -3,7 +3,7 @@
 # Realiza un analisis descriptivo de las variables.
 
 
-paquetes_necesarios = c("dplyr", "ggplot2","classInt") #c("readxl","RPostgres","sf","dplyr","writexl")
+paquetes_necesarios = c("dplyr", "ggplot2","classInt","sf","readxl") #c("readxl","RPostgres","sf","dplyr","writexl")
 
 for (paq in paquetes_necesarios){
   if (!(paq %in% rownames(installed.packages()))){
@@ -23,7 +23,8 @@ Fianzas_viviendas <- Fianzas_casan_1_vivienda
 
 rm(avra_catastro, avra_datos_originales, Fianzas_casan_distintas_viviendas,
    Fianzas_casan_distintas_viviendas_case, Fianzas_no_casan_catastro,
-   tabla_frecuencias, Fianzas_casan_1_vivienda)
+   Fianzas_casan_1_vivienda)
+
 
 
 # CREO CAMPO precio por m2
@@ -33,24 +34,46 @@ Fianzas_viviendas$renta_m2 <- Fianzas_viviendas$importe_de_la_renta /
 # proporcion existente entre la superficie de la vivienda y la de la parcela
 Fianzas_viviendas$tasa_superf <- Fianzas_viviendas$stotalocal_14 / 
   Fianzas_viviendas$sup_parcela
-# CREO CAMPO
+# CREO CAMPO superficie por número de habitaciones
 Fianzas_viviendas <- Fianzas_viviendas %>%
   mutate(superf_hab = stotalocal_14/num_habitaciones)
 
+# PASAR TODAS LAS COORDENADAS A HUSO 30
+# Los datos que nos pasa el IECA a cada parcela le pone coordendas en el huso
+# que le corresponde al municipio. Voy a pasarlas todas a huso 30 para ello
+# convierto el dataframe en un objeto sfc y obtengo las coordenadas
 
 
-#Declaro cuáles son los factores
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  mutate (sexo_arrendador = factor(sexo_arrendador),
-          tipo_persona_arrendador = factor(tipo_persona_arrendador),
-          tipo_entidad_arrendador = factor(tipo_entidad_arrendador),
-          sexo_arrendatario = factor(sexo_arrendatario),
-          nacionalidad_arrendatario = factor(nacionalidad_arrendatario),
-          municipio_806 = factor(municipio_806),
-          provincia_806 = factor(provincia_806),
-          cod_postal_806 = factor(cod_postal_806),
-          tipo_de_arrendamiento = factor(tipo_de_arrendamiento),
-          tip_const4d_14 = factor(tip_const4d_14))
+# Separar los registros con coorx mayor de 630000 (tienen srs 25829)
+Fianzas_viviendas_25830 <- Fianzas_viviendas %>% filter(coorx <= 630000)
+Fianzas_viviendas_25829 <- Fianzas_viviendas %>% filter(coorx > 630000)
+
+# Crear las capas sf para cada grupo
+capa_sf_25830 <- st_as_sf(Fianzas_viviendas_25830, coords = c("coorx", "coory"), crs = 25830)
+capa_sf_25829 <- st_as_sf(Fianzas_viviendas_25829, coords = c("coorx", "coory"), crs = 25829)
+
+# Transformar las coordenadas de la capa en srs 25829 a srs 25830
+capa_sf_25829_transformada <- st_transform(capa_sf_25829, crs = 25830)
+
+# Unir las capas en una sola capa sf
+Fianzas_viviendas <- rbind(capa_sf_25830, capa_sf_25829_transformada)
+
+coords_25830 <- st_coordinates(Fianzas_viviendas)
+
+# Agregar las coordenadas al dataframe de la capa
+Fianzas_viviendas$coorx_25830 <- coords_25830[, 1]
+Fianzas_viviendas$coory_25830 <- coords_25830[, 2]
+
+rm(Fianzas_viviendas_25829, Fianzas_viviendas_25830, capa_sf_25829_transformada,
+   coords_25830, capa_sf_25829, capa_sf_25830)
+
+
+# Verificar el SRS de la capa sf final
+#print(st_crs(capa_sf_final))
+
+
+
+
 
 
 
@@ -59,12 +82,16 @@ Fianzas_viviendas <- Fianzas_viviendas %>%
 
 # Eliminar los registros cuyos de tipologia de construcción no esté entre los
 # correctos
-Fianzas_viviendas <- subset(Fianzas_viviendas, tip_const4d_14 %in%
-                              c("0111", "0112", "0121", "0122","0131"))
+borrados <- Fianzas_viviendas %>%
+  filter(!tip_const4d_14 %in% c("0111", "0112", "0121", "0122", "0131")) %>%
+  nrow()
+cat(paste("El número de registros eliminados por disponer tipo de construcción no válido es",borrados))
+
+Fianzas_viviendas <- Fianzas_viviendas %>%
+  filter(tip_const4d_14 %in% c("0111", "0112", "0121", "0122", "0131"))
 
 # Eliminar los registros en los que el codigo INE asignado según la localización
 # de la parcela catatral (cod_ine) sea distinto del asignado por AVRA (codigo_ine)
-# Es posible que mas tarde se añadan otras elimaciones de registros
 #
 # primero tengo que arreglar los codigos de AVRA a los que le falta el 0
 # indicar a paco que esto debería venir arreglado en la tabla que me pasa el
@@ -76,7 +103,14 @@ Fianzas_viviendas <- Fianzas_viviendas %>%
                              paste0("0", codigo_ine),
                              codigo_ine))
 
-Fianzas_viviendas <- subset(Fianzas_viviendas, codigo_ine == cod_ine)
+borrados <- Fianzas_viviendas %>%
+  filter(codigo_ine != cod_ine) %>%
+  nrow()
+
+cat(paste("El número de registros eliminados por incongruencia entre el código de municipio asignado por AVRA y el código de municipio correspondiente a la referencia catastral es",borrados))
+
+Fianzas_viviendas <- Fianzas_viviendas %>%
+  filter(codigo_ine == cod_ine)
 
 # un tipo de error que hay que evitar es el de referencias catastrales de avra
 # que en catastro casen pero se refieran a bienes inmuebles que contengan más de 
@@ -84,7 +118,7 @@ Fianzas_viviendas <- subset(Fianzas_viviendas, codigo_ine == cod_ine)
 # cuando no existe division horizontal en dicho inmueble, pero si existe división
 # horizontal no separa sus bienes inmuebles en más viviendas auqnue en la tabla 14
 # tengan más direcciones. Estas situaciones deben ser en las que asociado a una
-# renta de vivienda "normal" encontremos una vivienda muy grande.
+# renta de vivienda "normal" encontremos una vivienda excesivamente grande.
 # analicemos pues el tamaño en relación a la renta de alquiler, es decir la renta_m2
 
 # 5907109TG3450N0001XY es un ejemplo para AVRA de un bien inbmueble que debería
@@ -97,19 +131,142 @@ Fianzas_viviendas <- subset(Fianzas_viviendas, codigo_ine == cod_ine)
 # El corte por los percentiles 0.025 y 0.975 lo he elegido porque obtengo
 # valores de la variable asumibles como correctos y tiene una interpretación fácil:
 #   Quedarte con el 95% central de observaciones
-Q1 <- quantile(Fianzas_viviendas$renta_m2, 0.025, na.rm = TRUE)
-Q3 <- quantile(Fianzas_viviendas$renta_m2, 0.975, na.rm = TRUE)
 
+# Q025 <- quantile(Fianzas_viviendas$renta_m2, 0.025, na.rm = TRUE)
+# Q975 <- quantile(Fianzas_viviendas$renta_m2, 0.975, na.rm = TRUE)
+# 
+# borrados <-  Fianzas_viviendas %>%
+#    filter(renta_m2 < Q025 | renta_m2 > Q975) %>%
+#    nrow()
+# 
+# cat(paste("El número de registros eliminados por valores extremos en renta/m2 es",borrados))
+# 
+# Fianzas_viviendas <- Fianzas_viviendas %>%
+#   filter(renta_m2 > Q025 & renta_m2 < Q975)
+# 
+# rm(Q025, Q975, borrados)
+
+# Hago una versión actualizada en la que se eliminan todos los registros cuya
+# referencia catastral queda en cualquiera de las 2 colas
+
+Q025 <- quantile(Fianzas_viviendas$renta_m2, 0.025, na.rm = TRUE)
+Q975 <- quantile(Fianzas_viviendas$renta_m2, 0.975, na.rm = TRUE)
+
+ref_cat_a_borrar <-  Fianzas_viviendas %>%
+  filter(renta_m2 < Q025 | renta_m2 > Q975) %>% 
+  distinct(referencia_catastral)
+
+
+borrados <- inner_join(Fianzas_viviendas, 
+                       ref_cat_a_borrar,
+                       by = c("referencia_catastral" = "referencia_catastral")) %>% 
+               nrow()
+
+
+Fianzas_viviendas <- anti_join(Fianzas_viviendas, 
+                                     ref_cat_a_borrar,
+                                     by = c("referencia_catastral" = "referencia_catastral"))
+
+cat(paste("El número de registros eliminados por valores extremos en renta/m2 es",borrados))
+rm(ref_cat_a_borrar, borrados, Q025, Q975)
+
+
+# INCORPORACIÓN DE INFORMACIÓN DE ADSCRIPCIÓN DE CADA MUNICIPIO A 
+# LA ESTRUCTURA DEL POTA
+# Se añaden los campos que indican la jerarquía del municipio y
+# la unidad territorial a la que pertenece el municipio
+
+adsc_mun <- read_excel("datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
+                       sheet = "adscripcion municipios",
+                       col_types = rep("text", times = 11))
+campos <- tolower(colnames(adsc_mun))
+campos <- gsub(" ", "_", campos)
+colnames(adsc_mun) <- campos
+
+codigo <- paste0("0",adsc_mun$codigo_municipal)
+codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
+
+adsc_mun <- adsc_mun %>% 
+  mutate(codigo_municipal = codigo,
+         pota.jerarquia = jerarquía_sistema_ciudades,
+         pota.unidad_territorial = unidad_territorial) %>% 
+  filter(!is.na(provincia)) %>% 
+  select(codigo_municipal, pota.jerarquia, pota.unidad_territorial)
+
+Fianzas_viviendas <-  left_join(Fianzas_viviendas, 
+                                adsc_mun, 
+                                by = c("cod_ine" = "codigo_municipal") )
+rm(campos, codigo, adsc_mun)
+
+# INCORPORACIÓN DE INFORMACIÓN DEL BARRIO Y LA SECCION EN LA QUE SE ENCUENTRA
+# CADA VIVIENDA  
+
+# Se añaden los campos nombre del barrio y nombre del distrito de la capa de barrios
+# Según el IECA la capa de Barrios contiene una delimitación aproximada de los
+# Distritos y Barrios de las grandes ciudades andaluzas
+# Tambien se añade el codigo de sección censal de la capa de secciones censales
+# que si recoge todos los municipios de Andalucia
+
+
+# Leer los shapefiles
+Barrios_sf <- st_read(dsn = "datos_aux/13_24_BarrioUrbano.shp")
+Secciones_sf <- st_read(dsn = "datos_aux/13_27_SeccionCensal.shp")
+
+Barrios_sf <- Barrios_sf %>% 
+  mutate(barrio.nombre = nombre,
+         barrio.distrito = distrito) %>% 
+  select(barrio.nombre, barrio.distrito)
+
+Secciones_sf <- Secciones_sf %>% 
+  mutate(seccion.codigo = codigo) %>% 
+  select(seccion.codigo)
+
+Fianzas_viviendas <- st_join(Fianzas_viviendas, Barrios_sf)
+Fianzas_viviendas <- st_join(Fianzas_viviendas, Secciones_sf)
+
+rm(Barrios_sf, Secciones_sf)
+
+#Declaro cuáles son los factores. OJO FALTAN ALGUNOS AUN
 Fianzas_viviendas <- Fianzas_viviendas %>%
-  filter(renta_m2 > Q1 & renta_m2 < Q3)
+  mutate (sexo_arrendador = factor(sexo_arrendador),
+          tipo_persona_arrendador = factor(tipo_persona_arrendador),
+          tipo_entidad_arrendador = factor(tipo_entidad_arrendador),
+          sexo_arrendatario = factor(sexo_arrendatario),
+          nacionalidad_arrendatario = factor(nacionalidad_arrendatario),
+          municipio_806 = factor(municipio_806),
+          provincia_806 = factor(provincia_806),
+          cod_postal_806 = factor(cod_postal_806),
+          tipo_de_arrendamiento = factor(tipo_de_arrendamiento),
+          tip_const4d_14 = factor(tip_const4d_14),
+          cod_ine = factor(cod_ine),
+          tipviv = factor(tipviv),
+          seccion.codigo = factor(seccion.codigo),
+          pota.unidad_territorial = factor(pota.unidad_territorial),
+          pota.jerarquia = factor(pota.jerarquia),
+          barrio.nombre = factor(barrio.nombre),
+          barrio.distrito = factor(barrio.distrito))
 
-rm(Q1,Q3)
+save.image("datos3.RData")
+
+# Exportar el dataframe a Excel
+write_xlsx(Fianzas_viviendas, "Fianzas_viviendas_filtrado.xlsx")
+
 
 
 # La superficie asignada a cada vivienda por el resumen de datos IECA Catastro
 # se calcula, dentro del fichero tipo 14 de construcciones, sumando la superficie
 # total del local de cada una de las construcciones que conforman cada vivienda.
 # Este dato se toma del campo “84_stl” de la hoja 14.
+
+
+
+
+
+
+
+
+rm(list =ls())
+load("datos3.RData")
 
 #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 # Indice
@@ -121,6 +278,9 @@ rm(Q1,Q3)
 
 # La descripción de variables será distinta en función de si la variable es
 # tipo numerico, texto o factor.
+
+
+
 
 cat ("\n El número total de registros para el análisis es ",
      nrow(Fianzas_viviendas), "\n")

@@ -14,15 +14,16 @@ for (paq in paquetes_necesarios){
     install.packages(paq, dependencies = T)}
   library(paq, character.only = T)
 }
-
 rm(paq, paquetes_necesarios)
 
-#Establece directorio de trabajo
-#setwd("Q:/Inspeccion/_TRABAJOS/133 Datos estadísticos ARRU/Analisis")
 
 #Carga datos de fianzas
 avra <- read_excel("DATOS FIANZAS 2022.xls",     
                   sheet = "Página1_1") 
+
+
+
+
 avra <- avra %>% mutate(id_ams = row_number())
 colnames(avra) <- tolower(colnames(avra))
 avra$duracion_contrato_años <- sub(",", ".", avra$duracion_contrato_años)
@@ -78,6 +79,7 @@ if (nrow(resultado) > 0) {
   existe_esquema = FALSE
 }
 
+# Si no existe el esquema lo crea
 if(!existe_esquema) {
   #Creo el esquema
   dbExecute(con_owner, "CREATE SCHEMA tmp_avra_alquiler 
@@ -122,10 +124,17 @@ privileg1 <- "
 privileg2 <- "
   GRANT SELECT, REFERENCES ON TABLE tmp_avra_alquiler.rc_distintas TO sige_consulta;
 "
+# BORRO la tabla de referencias catastrales distintas si es que ya existe
+# la borro para que cada vez la genere de nuevo. 
 
-if(!dbExistsTable(con_owner,
+if(dbExistsTable(con_owner,
                  Id(schema = "tmp_avra_alquiler", 
                     table = "rc_distintas"))) {
+  dbExecute(con_owner,"DROP TABLE tmp_avra_alquiler.rc_distintas")
+}
+
+
+
   dbExecute(con_owner,crea_tabla)
   dbExecute(con_owner,privileg1)
   dbExecute(con_owner,privileg2)
@@ -134,24 +143,27 @@ if(!dbExistsTable(con_owner,
   RC_distintas <- unique(avra$rc_parcela)
   RC_distintas <- data.frame(rc14 = unlist(RC_distintas))
   
+  #y añado los registros a la tabla recién creada
   st_write(RC_distintas, dsn = con_owner, 
            Id(schema="tmp_avra_alquiler", table = "rc_distintas"),
            append = TRUE)
   rm(RC_distintas)
-}
+
 
 
 rm(crea_tabla,privileg1,privileg2)
 
-#y añado los registros a la tabla recién creada
+
 
 
 
 dbDisconnect(con_owner)
 rm(con_owner)
 
-#ahora para realizar la consulta debo usar el usuario sige_ajms ya que el 
-#usuario sige_owner no puede leer los datos del esquema catastro2022
+#ahora para realizar la consulta uso el usuario sige_ajms ya que el 
+#usuario sige_owner en principio no podía leer los datos del esquema catastro2022
+#ya si puede hacerse todo el proceso con el usuario con_owner pero dejo el 
+#código como estaba
 
 # Conexión
 con_ajms <- dbConnect(RPostgres::Postgres(), 
@@ -179,32 +191,56 @@ dbDisconnect(con_ajms)
 rm(con_ajms)
 
 
-#En la capa de parcelas de los datos del IECA Catastro hay parcelas repetidas
-#Esto genera registros duplicados en el resultado, para eliminar esos duplicados
-#nos quedamos con los registros que son completamente distintos.
+# En la capa de parcelas de los datos del IECA Catastro que hemos usado en el
+# paso anterior hay parcelas repetidas
+# Esto puede generar registros duplicados en el resultado, es decir, referencias
+# catastrales que en el paso anterior han podido quedar asociadas a más de un
+# registro de codigo de delgacion y municipi distinto
+# Para eliminar esos duplicados en caso de que existan nos quedamos con los
+# registros que son completamente distintos.
 
 # Quedarse con los registros completamente distintos
 
 resultado <- resultado %>%
   group_by(rc14,delegacio,municipio)%>%
-  summarise()
+  summarise() %>% 
+  ungroup()
 
 
-cat(paste("Número de registros", nrow(resultado)))
-cat(paste("Número de Referencias castrales 14dígitos distintas",
-           (length(unique(resultado$rc14)))))
+nregistros <- nrow(resultado)
+nunicos <- length(unique(resultado$rc14))
+
+cat(paste("El número de registros al que se ha asignado referencia catastral es",
+          nregistros))
+cat(paste("El número de Referencias castrales (14 dígitos) distintas",
+          nunicos))
+mensaje <- paste("ATENCIÓN: Alguna referencia catastral (", nregistros-nunicos,
+            ")es ubicada en más de un municipio")
+ifelse(nregistros-nunicos != 0, mensaje)
+
 
 #En el caso del año 2022 se obtienen igual numero de registros en la consulta
 #que en la consulta agrupada, luego ninguna de las referencias catastrales (rc14)
 #aportadas casa con más de un registro en catastro, es decir, a cada parcela solo
 #le añade catastro un municipio
 
+
 #Pero hay algunos registros cuya referencia catastral no aparece en catastro
 #son los siguientes
 
+nreg <- nrow(avra)
 
 avra <-  left_join(avra, resultado, by = c("rc_parcela" = "rc14") )
-rm(resultado)
+
+nreg2 <- nrow(avra)
+
+mensaje <- paste("El número de registros en la tabla con datos originales de",
+                 "AVRA pasa de",nreg,"a",nreg2)
+
+ifelse(nregistros-nunicos != 0, mensaje)
+
+rm(resultado, mensaje, nregistros, nunicos, nreg, nreg2)
+
 avra_RC_no_casa <- avra %>% 
                       filter(is.na(delegacio))  %>%
                       select(-rc_parcela, -municipio, -delegacio)
@@ -488,7 +524,10 @@ dbDisconnect(con_ajms)
 rm(con_ajms)
 
 #Cuento el numero de enlaces que ha tenido cada registro
-resultado <- resultado %>% group_by(id_ams) %>% mutate (comp = n())
+resultado <- resultado %>% 
+              group_by(id_ams) %>%
+              mutate (comp = n()) %>%
+              ungroup()
 
 #si el enlace ha dado un registro pero sin valores es que no existe dicha referencia
 #pongo el valor a 0 ya que de lo contrario vale NA
@@ -559,7 +598,8 @@ avra_catastro <- avra_catastro %>%
          cat.moda_superf = mean(mfv(stotalocal_14), na.rm = TRUE),
          cat.desv_tip_superf = sqrt(var(as.integer(stotalocal_14),na.rm=TRUE)),
          cat.coef_var = (cat.desv_tip_superf/cat.media_superf)*100,
-         cat.frecuencias = calcula_frecuencias(stotalocal_14))
+         cat.frecuencias = calcula_frecuencias(stotalocal_14)) %>% 
+  ungroup()
 
 rm(calcula_frecuencias)
 
