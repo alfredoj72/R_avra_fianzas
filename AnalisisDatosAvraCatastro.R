@@ -1,272 +1,34 @@
-# Usa solo los registros que casan con 1 vivienda
-# Elimina los registros considerados errores
+
 # Realiza un analisis descriptivo de las variables.
 
-
-paquetes_necesarios = c("dplyr", "ggplot2","classInt","sf","readxl") #c("readxl","RPostgres","sf","dplyr","writexl")
-
+paquetes_necesarios = c("sf","tidyverse","flextable") # c( "ggplot2","classInt") 
 for (paq in paquetes_necesarios){
   if (!(paq %in% rownames(installed.packages()))){
     install.packages(paq, dependencies = T)}
   library(paq, character.only = T)
 }
+rm(paq, paquetes_necesarios)
 
-
+# parto
 rm(list =ls())
+load("./datos_output/avra_catastro_2022.RData")
+datos <- avra_catastro_2022 ; rm(avra_catastro_2022)
+avra_datos_originales <- datos[["originales"]]
+# avra_catastro <- datos[["avra_catastro"]]
+# tabla_frecuencias  <- datos[["tabla_frecuencias"]]
+# tabla_frecuencias_final  <- datos[["tabla_frecuencias_final"]]
+# Fianzas_casan_1_vivienda <- datos[["Fianzas_casan_1_vivienda"]]
+# Fianzas_no_casan_catastro <- datos[["Fianzas_no_casan_catastro"]]
+# Fianzas_casan_distintas_viviendas <- datos[["Fianzas_casan_distintas_viviendas"]]
+# Fianzas_casan_distintas_viviendas_case <- datos[["Fianzas_casan_distintas_viviendas_case"]]
+
+
+load("./datos_output/datos_para_analisis_2022.RData")
+Fianzas_viviendas <- datos_para_analisis_2022[["Fianzas_viviendas"]]
+Fianzas_viviendas <- st_drop_geometry(Fianzas_viviendas)
+rm(datos_para_analisis_2022)
 
-#Cargo los datos y me quedo con las viviendas que han casado con una vivienda
-#del catastro (1 registro avra - 1 vivienda catastro)
-load("datos2.RData")
 
-#Me quedo solo con la tabla que voy a analizar
-Fianzas_viviendas <- Fianzas_casan_1_vivienda
-
-rm(avra_catastro, avra_datos_originales, Fianzas_casan_distintas_viviendas,
-   Fianzas_casan_distintas_viviendas_case, Fianzas_no_casan_catastro,
-   Fianzas_casan_1_vivienda)
-
-
-
-# CREO CAMPO precio por m2
-Fianzas_viviendas$renta_m2 <- Fianzas_viviendas$importe_de_la_renta /
-  Fianzas_viviendas$stotalocal_14
-# CREO CAMPO
-# proporcion existente entre la superficie de la vivienda y la de la parcela
-Fianzas_viviendas$tasa_superf <- Fianzas_viviendas$stotalocal_14 / 
-  Fianzas_viviendas$sup_parcela
-# CREO CAMPO superficie por número de habitaciones
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  mutate(superf_hab = stotalocal_14/num_habitaciones)
-
-# PASAR TODAS LAS COORDENADAS A HUSO 30
-# Los datos que nos pasa el IECA a cada parcela le pone coordendas en el huso
-# que le corresponde al municipio. Voy a pasarlas todas a huso 30 para ello
-# convierto el dataframe en un objeto sfc y obtengo las coordenadas
-
-
-# Separar los registros con coorx mayor de 630000 (tienen srs 25829)
-Fianzas_viviendas_25830 <- Fianzas_viviendas %>% filter(coorx <= 630000)
-Fianzas_viviendas_25829 <- Fianzas_viviendas %>% filter(coorx > 630000)
-
-# Crear las capas sf para cada grupo
-capa_sf_25830 <- st_as_sf(Fianzas_viviendas_25830, coords = c("coorx", "coory"), crs = 25830)
-capa_sf_25829 <- st_as_sf(Fianzas_viviendas_25829, coords = c("coorx", "coory"), crs = 25829)
-
-# Transformar las coordenadas de la capa en srs 25829 a srs 25830
-capa_sf_25829_transformada <- st_transform(capa_sf_25829, crs = 25830)
-
-# Unir las capas en una sola capa sf
-Fianzas_viviendas <- rbind(capa_sf_25830, capa_sf_25829_transformada)
-
-coords_25830 <- st_coordinates(Fianzas_viviendas)
-
-# Agregar las coordenadas al dataframe de la capa
-Fianzas_viviendas$coorx_25830 <- coords_25830[, 1]
-Fianzas_viviendas$coory_25830 <- coords_25830[, 2]
-
-rm(Fianzas_viviendas_25829, Fianzas_viviendas_25830, capa_sf_25829_transformada,
-   coords_25830, capa_sf_25829, capa_sf_25830)
-
-
-# Verificar el SRS de la capa sf final
-#print(st_crs(capa_sf_final))
-
-
-
-
-
-
-
-# ELIMINACION DE REGISTROS CONSIDERADOS NO VALIDOS PARA EL ANALISIS DE
-# EVOLUCION DE LAS FIANZAS RECOGIDAS EN EL REGISTRO DE FIANZAS
-
-# Eliminar los registros cuyos de tipologia de construcción no esté entre los
-# correctos
-borrados <- Fianzas_viviendas %>%
-  filter(!tip_const4d_14 %in% c("0111", "0112", "0121", "0122", "0131")) %>%
-  nrow()
-cat(paste("El número de registros eliminados por disponer tipo de construcción no válido es",borrados))
-
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  filter(tip_const4d_14 %in% c("0111", "0112", "0121", "0122", "0131"))
-
-# Eliminar los registros en los que el codigo INE asignado según la localización
-# de la parcela catatral (cod_ine) sea distinto del asignado por AVRA (codigo_ine)
-#
-# primero tengo que arreglar los codigos de AVRA a los que le falta el 0
-# indicar a paco que esto debería venir arreglado en la tabla que me pasa el
-# tb indicar que hay rc con menos de 20 dígitos que debería cribar
-
-# Cambiar el campo cod_ine agregando un "0" por delante cuando la longitud sea 4
-Fianzas_viviendas <- Fianzas_viviendas %>% 
-  mutate(codigo_ine = ifelse(nchar(codigo_ine) == 4, 
-                             paste0("0", codigo_ine),
-                             codigo_ine))
-
-borrados <- Fianzas_viviendas %>%
-  filter(codigo_ine != cod_ine) %>%
-  nrow()
-
-cat(paste("El número de registros eliminados por incongruencia entre el código de municipio asignado por AVRA y el código de municipio correspondiente a la referencia catastral es",borrados))
-
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  filter(codigo_ine == cod_ine)
-
-# un tipo de error que hay que evitar es el de referencias catastrales de avra
-# que en catastro casen pero se refieran a bienes inmuebles que contengan más de 
-# 1 vivienda. El IECA ha separado los bienes inmuebles en más de una vivienda 
-# cuando no existe division horizontal en dicho inmueble, pero si existe división
-# horizontal no separa sus bienes inmuebles en más viviendas auqnue en la tabla 14
-# tengan más direcciones. Estas situaciones deben ser en las que asociado a una
-# renta de vivienda "normal" encontremos una vivienda excesivamente grande.
-# analicemos pues el tamaño en relación a la renta de alquiler, es decir la renta_m2
-
-# 5907109TG3450N0001XY es un ejemplo para AVRA de un bien inbmueble que debería
-# contener varias viviendas en los datos IECA Catastro y solo contiene 1.
-
-# Sería deseable que en el modelo 806 se recogiera un check para indicar si el
-# alquiler se refiere a la totalidad del biene inmueble para el que se recoge
-# la referencia catastral o solo a una parte.
-
-# El corte por los percentiles 0.025 y 0.975 lo he elegido porque obtengo
-# valores de la variable asumibles como correctos y tiene una interpretación fácil:
-#   Quedarte con el 95% central de observaciones
-
-# Q025 <- quantile(Fianzas_viviendas$renta_m2, 0.025, na.rm = TRUE)
-# Q975 <- quantile(Fianzas_viviendas$renta_m2, 0.975, na.rm = TRUE)
-# 
-# borrados <-  Fianzas_viviendas %>%
-#    filter(renta_m2 < Q025 | renta_m2 > Q975) %>%
-#    nrow()
-# 
-# cat(paste("El número de registros eliminados por valores extremos en renta/m2 es",borrados))
-# 
-# Fianzas_viviendas <- Fianzas_viviendas %>%
-#   filter(renta_m2 > Q025 & renta_m2 < Q975)
-# 
-# rm(Q025, Q975, borrados)
-
-# Hago una versión actualizada en la que se eliminan todos los registros cuya
-# referencia catastral queda en cualquiera de las 2 colas
-
-Q025 <- quantile(Fianzas_viviendas$renta_m2, 0.025, na.rm = TRUE)
-Q975 <- quantile(Fianzas_viviendas$renta_m2, 0.975, na.rm = TRUE)
-
-ref_cat_a_borrar <-  Fianzas_viviendas %>%
-  filter(renta_m2 < Q025 | renta_m2 > Q975) %>% 
-  distinct(referencia_catastral)
-
-
-borrados <- inner_join(Fianzas_viviendas, 
-                       ref_cat_a_borrar,
-                       by = c("referencia_catastral" = "referencia_catastral")) %>% 
-               nrow()
-
-
-Fianzas_viviendas <- anti_join(Fianzas_viviendas, 
-                                     ref_cat_a_borrar,
-                                     by = c("referencia_catastral" = "referencia_catastral"))
-
-cat(paste("El número de registros eliminados por valores extremos en renta/m2 es",borrados))
-rm(ref_cat_a_borrar, borrados, Q025, Q975)
-
-
-# INCORPORACIÓN DE INFORMACIÓN DE ADSCRIPCIÓN DE CADA MUNICIPIO A 
-# LA ESTRUCTURA DEL POTA
-# Se añaden los campos que indican la jerarquía del municipio y
-# la unidad territorial a la que pertenece el municipio
-
-adsc_mun <- read_excel("datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
-                       sheet = "adscripcion municipios",
-                       col_types = rep("text", times = 11))
-campos <- tolower(colnames(adsc_mun))
-campos <- gsub(" ", "_", campos)
-colnames(adsc_mun) <- campos
-
-codigo <- paste0("0",adsc_mun$codigo_municipal)
-codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
-
-adsc_mun <- adsc_mun %>% 
-  mutate(codigo_municipal = codigo,
-         pota.jerarquia = jerarquía_sistema_ciudades,
-         pota.unidad_territorial = unidad_territorial) %>% 
-  filter(!is.na(provincia)) %>% 
-  select(codigo_municipal, pota.jerarquia, pota.unidad_territorial)
-
-Fianzas_viviendas <-  left_join(Fianzas_viviendas, 
-                                adsc_mun, 
-                                by = c("cod_ine" = "codigo_municipal") )
-rm(campos, codigo, adsc_mun)
-
-# INCORPORACIÓN DE INFORMACIÓN DEL BARRIO Y LA SECCION EN LA QUE SE ENCUENTRA
-# CADA VIVIENDA  
-
-# Se añaden los campos nombre del barrio y nombre del distrito de la capa de barrios
-# Según el IECA la capa de Barrios contiene una delimitación aproximada de los
-# Distritos y Barrios de las grandes ciudades andaluzas
-# Tambien se añade el codigo de sección censal de la capa de secciones censales
-# que si recoge todos los municipios de Andalucia
-
-
-# Leer los shapefiles
-Barrios_sf <- st_read(dsn = "datos_aux/13_24_BarrioUrbano.shp")
-Secciones_sf <- st_read(dsn = "datos_aux/13_27_SeccionCensal.shp")
-
-Barrios_sf <- Barrios_sf %>% 
-  mutate(barrio.nombre = nombre,
-         barrio.distrito = distrito) %>% 
-  select(barrio.nombre, barrio.distrito)
-
-Secciones_sf <- Secciones_sf %>% 
-  mutate(seccion.codigo = codigo) %>% 
-  select(seccion.codigo)
-
-Fianzas_viviendas <- st_join(Fianzas_viviendas, Barrios_sf)
-Fianzas_viviendas <- st_join(Fianzas_viviendas, Secciones_sf)
-
-rm(Barrios_sf, Secciones_sf)
-
-#Declaro cuáles son los factores. OJO FALTAN ALGUNOS AUN
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  mutate (sexo_arrendador = factor(sexo_arrendador),
-          tipo_persona_arrendador = factor(tipo_persona_arrendador),
-          tipo_entidad_arrendador = factor(tipo_entidad_arrendador),
-          sexo_arrendatario = factor(sexo_arrendatario),
-          nacionalidad_arrendatario = factor(nacionalidad_arrendatario),
-          municipio_806 = factor(municipio_806),
-          provincia_806 = factor(provincia_806),
-          cod_postal_806 = factor(cod_postal_806),
-          tipo_de_arrendamiento = factor(tipo_de_arrendamiento),
-          tip_const4d_14 = factor(tip_const4d_14),
-          cod_ine = factor(cod_ine),
-          tipviv = factor(tipviv),
-          seccion.codigo = factor(seccion.codigo),
-          pota.unidad_territorial = factor(pota.unidad_territorial),
-          pota.jerarquia = factor(pota.jerarquia),
-          barrio.nombre = factor(barrio.nombre),
-          barrio.distrito = factor(barrio.distrito))
-
-save.image("datos3.RData")
-
-# Exportar el dataframe a Excel
-write_xlsx(Fianzas_viviendas, "Fianzas_viviendas_filtrado.xlsx")
-
-
-
-# La superficie asignada a cada vivienda por el resumen de datos IECA Catastro
-# se calcula, dentro del fichero tipo 14 de construcciones, sumando la superficie
-# total del local de cada una de las construcciones que conforman cada vivienda.
-# Este dato se toma del campo “84_stl” de la hoja 14.
-
-
-
-
-
-
-
-
-rm(list =ls())
-load("datos3.RData")
 
 #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 # Indice
@@ -279,14 +41,11 @@ load("datos3.RData")
 # La descripción de variables será distinta en función de si la variable es
 # tipo numerico, texto o factor.
 
-
-
-
 cat ("\n El número total de registros para el análisis es ",
      nrow(Fianzas_viviendas), "\n")
 
 
-Fianzas_viviendas <- Fianzas_viviendas %>% select(-num_repeticiones)
+#Fianzas_viviendas <- Fianzas_viviendas %>% select(-num_repeticiones)
 
 # Función para obtener la descripción de una columna de tipo texto
 get_text_description <- function(column) {
@@ -423,6 +182,213 @@ Resumen_basico <- function(column) {
   #  return(doble)
 }
 
+# Parámetros para pintar las tablas en formato bonito
+library(flextable)
+# Establezco parámetros por defecto para tablas
+init_flextable_defaults() #reinicia los valores por defecto del paq flextable
+set_flextable_defaults(
+  big.mark = ".",
+  decimal.mark = ",",
+  digits = 1,
+  # theme_fun = theme_box,
+  font.family = "calibri",  
+  line_spacing = 1.3,
+  font.color = "grey8", # "#333333",
+  font.size = 11,
+  border.color = "grey60", # "#333333",
+  padding = 4
+)
+
+# define el estilo del borde
+border_style1 = officer::fp_border(color="grey60", width=2)
+border_style2 = officer::fp_border(color="grey60", width=0.5)
+
+# Función que calcula una tabla con recuentos de un solo campo y la pinta con flextable
+pinta_tabla <- function(datos,campo,campo_descriptivo,orden = "NO"){
+  #browser()
+  campo <- datos[[campo]]
+  df <- data.frame(campo = campo)
+  
+  tabla <-df %>% 
+    group_by(campo) %>% 
+    summarise(Casos=n())  %>%
+    ungroup() %>% 
+    mutate(Porcentaje = 100 * Casos / sum(Casos), # se puede usar := en vez de =
+           campo = as.character(campo),
+           campo = ifelse(is.na(campo),"No Especificado", campo))   # se puede usar := en vez de =
+  
+  n_resto <- tabla %>% 
+               filter(campo == "Resto") %>% 
+               nrow()
+  
+  if (orden == "SI") {
+    tabla <- tabla %>%  arrange(desc(Casos))
+    if (n_resto > 0){
+      tabla <- tabla %>% arrange(ifelse(campo == "Resto", 1, 0))
+    }
+  }
+  
+  suma_fila <- tabla %>%
+    summarise( campo = "Suma",
+               Casos = sum(Casos),
+               Porcentaje = sum(Porcentaje))
+  
+  tabla <- bind_rows(tabla, suma_fila) #%>% 
+  #mutate({{campo}} := ifelse(is.na({{campo}}), "Suma", {{campo}}))
+  
+  tabla_impresa <- tabla %>%  flextable() %>%  
+    set_header_labels(campo = campo_descriptivo) %>% 
+    colformat_double() %>% 
+    autofit() %>% 
+    border_remove() %>% 
+    hline(part = "header", i = 1, border = border_style1)   %>%
+    hline(part = "body", i = nrow(tabla)-1, border = border_style2) 
+  
+  return(tabla_impresa)
+}
+
+# Función que calcula una tabla con recuentos de un solo campo, considerando
+# todos los valores y solo lo válidos, y la pinta con flextable
+pinta_tabla2 <- function(datos,campo,campo_descriptivo,orden = "NO"){
+  #browser()
+  campo <- datos[[campo]]
+  df <- data.frame(campo = campo)
+  
+  tabla <- df %>% 
+    group_by(campo) %>% 
+    summarise(Casos=n())  %>%
+    ungroup() %>% 
+    mutate(Porcentaje = 100 * Casos / sum(Casos), # se puede usar := en vez de =
+           campo = as.character(campo),
+           Casos_v = as.integer(ifelse(is.na(campo), 0, Casos)),
+           Porcentaje_v = 100 * Casos_v / sum(Casos_v),
+           campo = ifelse(is.na(campo),"No Especificado", campo))  # se puede usar := en vez de =
+  
+  n_resto <- tabla %>% 
+    filter(campo == "Resto") %>% 
+    nrow()
+  
+  if (orden == "SI") {
+    tabla <- tabla %>%  arrange(desc(Casos))
+    if (n_resto > 0){
+      tabla <- tabla %>% arrange(ifelse(campo == "Resto", 1, 0))
+    }
+  }
+  
+  suma_fila <- tabla %>%
+    summarise( campo = "Suma",
+               Casos = sum(Casos),
+               Porcentaje = sum(Porcentaje),
+               Casos_v = sum(Casos_v),
+               Porcentaje_v = sum(Porcentaje_v))
+  
+  tabla <- bind_rows(tabla, suma_fila) #%>% 
+  #mutate({{campo}} := ifelse(is.na({{campo}}), "Suma", {{campo}}))
+  
+  tabla_impresa <- tabla %>%  flextable() %>%  
+    set_header_labels(campo = campo_descriptivo) %>% 
+    colformat_double() %>% 
+    autofit() %>% 
+    border_remove() %>% 
+    
+    add_header_row(
+      top = TRUE,                # La nueva cabecera va encima de la fila de cabecera existente
+      values = c("",             # Valores de cabecera para cada columna a continuación
+                 "Total", 
+                 "",             # Este será el encabezado de nivel superior para esta columna y las dos siguientes
+                 "Válidos",
+                 "")) %>% 
+    
+    
+    set_header_labels(         # Renombra las columnas de la fila de cabecera original
+      Casos_v = "Casos", 
+      Porcentaje_v = "Porcentaje")  %>% 
+    
+    # Combina horizontalmente las columnas 2 a 3  y 4 a 5 en la nueva fila de encabezado
+    merge_at(i = 1, j = 2:3, part = "header") %>% 
+    merge_at(i = 1, j = 4:5, part = "header") %>% 
+    
+    align(align = "center", j = c(2:5), part = "all") %>% 
+    
+    hline(part = "header", i = 2, border = border_style1)   %>%
+    hline(part = "body", i = nrow(tabla)-1, border = border_style2) 
+  
+  return(tabla_impresa)
+}
+
+pinta_tabla3 <- function(datos,campo,campo_descriptivo,orden = "NO"){
+  #browser()
+  campo <- datos[[campo]]
+  df <- data.frame(campo = campo)
+  
+  tabla <- df %>% 
+    group_by(campo) %>% 
+    summarise(Casos=n())  %>%
+    ungroup() %>% 
+    mutate(Porcentaje = 100 * Casos / sum(Casos), # se puede usar := en vez de =
+           campo = as.character(campo),
+           Casos_v = as.integer(ifelse(is.na(campo), 0, Casos)),
+           Porcentaje_v = 100 * Casos_v / sum(Casos_v),
+           campo = ifelse(is.na(campo),"No Especificado", campo)) %>%  # se puede usar := en vez de =
+    select(-Casos_v)
+  
+  #Comprueba si hay una fila que contiene el valor "Resto"
+  n_resto <- tabla %>% 
+    filter(campo == "Resto") %>% 
+    nrow()
+  
+  #Si se ha indicado que se ordene por número de casos, y si hay una línea con el
+  # valor del resto la lleva al final
+  if (orden == "SI") {
+    tabla <- tabla %>%  arrange(desc(Casos))
+    if (n_resto > 0){
+      tabla <- tabla %>% arrange(ifelse(campo == "Resto", 1, 0))
+    }
+  }
+  
+  suma_fila <- tabla %>%
+    summarise( campo = "Suma",
+               Casos = sum(Casos),
+               Porcentaje = sum(Porcentaje),
+               #Casos_v = sum(Casos_v),
+               Porcentaje_v = sum(Porcentaje_v))
+  
+  tabla <- bind_rows(tabla, suma_fila) #%>% 
+  #mutate({{campo}} := ifelse(is.na({{campo}}), "Suma", {{campo}}))
+  
+  tabla_impresa <- tabla %>%  flextable() %>%  
+    set_header_labels(campo = campo_descriptivo) %>% 
+    colformat_double() %>% 
+    autofit() %>% 
+    border_remove() %>% 
+    
+    # add_header_row(
+    #   top = TRUE,                # La nueva cabecera va encima de la fila de cabecera existente
+    #   values = c("",             # Valores de cabecera para cada columna a continuación
+    #              "Total", 
+    #              "",             # Este será el encabezado de nivel superior para esta columna y las dos siguientes
+    #              "Válidos",
+    #              "")) %>% 
+    
+    
+    set_header_labels(         # Renombra las columnas de la fila de cabecera original
+      #Casos_v = "Casos", 
+      Porcentaje_v = "Porcentaje Válidos")  %>% 
+    
+    # Combina horizontalmente las columnas 2 a 3  y 4 a 5 en la nueva fila de encabezado
+    # merge_at(i = 1, j = 2:3, part = "header") %>% 
+    # merge_at(i = 1, j = 4:5, part = "header") %>% 
+    
+    align(align = "center", j = c(2:4), part = "all") %>% 
+    
+    hline(part = "header", i = 1, border = border_style1)   %>%
+    hline(part = "body", i = nrow(tabla)-1, border = border_style2) 
+  
+  return(tabla_impresa)
+}
+
+
+
 # Comienzo el analisis de cada variable
 # 
 # 
@@ -439,31 +405,258 @@ Resumen_basico(Fianzas_viviendas$numero_documento)
 #nif_cif_arrendador_anonimizado
 Resumen_basico(Fianzas_viviendas$nif_cif_arrendador_anonimizado)
 
+
+#.-.-.-.-.-.-
+#
+
+# Si convierto los NA en un nivel del factor comenzará a ordenarse como el resto
+# de los niveles, si lo dejo como NA se van siempre al último de la lista.
+
+Fianzas_viviendas <- Fianzas_viviendas %>%
+  mutate (tipo_persona_arrendador = as.character(tipo_persona_arrendador),
+          tipo_entidad_arrendador = as.factor(tipo_entidad_arrendador),
+          sexo_arrendador = as.character(sexo_arrendador))
+
+Fianzas_viviendas <- Fianzas_viviendas %>%
+  mutate (tipo_persona_arrendador = replace_na(tipo_persona_arrendador,"NEspec")) %>% # no hay casos
+  mutate (tipo_persona_arrendador = factor(tipo_persona_arrendador, 
+                                   levels = c("F", "J"), 
+                                   labels = c("Física", "Jurídica")),
+          sexo_arrendador = factor(sexo_arrendador,
+                                   levels = c("M", "V"),
+                                   labels = c("Mujeres", "Hombres")))
+
+
+####################   tipo_persona_arrendador       ##################
+
+#Resumen_basico(Fianzas_viviendas$tipo_persona_arrendador)
+tabla <- pinta_tabla(Fianzas_viviendas, "tipo_persona_arrendador", "Tipo Persona Arrendador")
+print(tabla)
+
+tabla <- pinta_tabla3(Fianzas_viviendas, "tipo_persona_arrendador", "Tipo Persona Arrendador")
+print(tabla)
+
+# Crear el gráfico de barras con etiquetas de altura
+ggplot(Fianzas_viviendas, aes(x = tipo_persona_arrendador)) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Tipo de persona del arrendador") +
+  theme_minimal()
+
+
+# Calcular las proporciones del campo sexo_arrendador
+proporcion <- Fianzas_viviendas %>%
+  count(tipo_persona_arrendador) %>%
+  mutate(proporcion = n / sum(n))
+
+# Crear el gráfico de barras con las proporciones
+ggplot(proporcion, aes(x = tipo_persona_arrendador, y = proporcion)) +
+  geom_bar(stat = "identity", fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(aes(label = scales::percent(proporcion)), vjust = 0.5, color = "cornsilk4") +
+  labs(x = "Tipo de Persona del Arrendador",
+       y = "Proporción",
+       title = "Tipo de Persona del Arrendador")
+
+
+
+
+####################   sexo_arrendador       ##################
+
+Fianzas_viviendas_pf <- Fianzas_viviendas %>%
+                        filter(tipo_persona_arrendador == "Física")
+tabla <- pinta_tabla(Fianzas_viviendas_pf,
+                     campo = "sexo_arrendador",
+                     campo_descriptivo = "Sexo Arrendador",
+                     orden = "SI")
+print(tabla)
+
+tabla <- pinta_tabla3(Fianzas_viviendas_pf,
+                     campo = "sexo_arrendador",
+                     campo_descriptivo = "Sexo Arrendador",
+                     orden = "SI")
+print(tabla)
+
+# Gráfico incluyendo valores faltantes
+ggplot(Fianzas_viviendas_pf, aes(x = sexo_arrendador)) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Sexo Arrendador") +
+  scale_x_discrete(labels = c(levels(Fianzas_viviendas_pf$sexo_arrendador), "No especificado"))+
+  # scale_x_discrete(labels = function(x) 
+  #   ifelse(is.na(x), "No especificado", c("F" = "Física", "J" = "Jurídica"))) +
+  theme_minimal()
+
+# Gráfico SIN valores faltantes
+
+ggplot(drop_na(Fianzas_viviendas_pf, sexo_arrendador),
+       aes(x = sexo_arrendador)) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Sexo Arrendador") +
+  scale_x_discrete(labels = c(levels(Fianzas_viviendas_pf$sexo_arrendador), "No especificado"))+
+  theme_minimal()
+
+
+# Calcular las proporciones del campo sexo_arrendador
+proporcion_sexo <- Fianzas_viviendas %>%
+  count(sexo_arrendador) %>%
+  mutate(proporcion = n / sum(n))
+
+# Crear el gráfico de barras con las proporciones
+ggplot(proporcion_sexo, aes(x = sexo_arrendador, y = proporcion)) +
+  geom_bar(stat = "identity", fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(aes(label = scales::percent(proporcion)), vjust = -0.5, color = "cornsilk4") +
+  labs(x = "Sexo del Arrendador",
+       y = "Proporción",
+       title = "Proporción de Sexo del Arrendador")
+
+rm(Fianzas_viviendas_pf)
+
+
+
+
+
+####################   tipo_entidad_arrendador       ##################
+
+Fianzas_viviendas_pj <- Fianzas_viviendas %>%
+  filter(tipo_persona_arrendador == "Jurídica")
+tabla <- pinta_tabla(Fianzas_viviendas_pj,
+                     "tipo_entidad_arrendador", "Tipo Entidad Arrendador")
+print(tabla)
+tabla <- pinta_tabla(Fianzas_viviendas_pj,
+                     "tipo_entidad_arrendador", "Tipo Entidad Arrendador", orden ="SI")
+print(tabla)
+
+
+# pinta la grafica
+
+ggplot(Fianzas_viviendas_pj, aes(x = tipo_entidad_arrendador)) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Tipo Entidad Arrendador") +
+  scale_x_discrete(labels = levels(Fianzas_viviendas_pj$tipo_entidad_arrendador))+
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+######## 2da version con texto corto, columnas ordenadas por frecuencia
+
+primera_letra <- substr(Fianzas_viviendas_pj$tipo_entidad_arrendador,1,1) %>% as.factor()
+ggplot(Fianzas_viviendas_pj, aes(x = (fct_infreq(tipo_entidad_arrendador)))) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Tipo Entidad Arrendador") +
+  scale_x_discrete(labels = levels(primera_letra))+
+  theme_minimal()
+
+N_grupos <- 4 # número de factores que dejo 
+# Dejo solo los 4 tipos más frecuentes 
+Fianzas_viviendas_pj <- Fianzas_viviendas_pj %>% 
+    mutate(tipo_pj_agr = fct_lump(
+      tipo_entidad_arrendador,
+      n = N_grupos,
+      other_level = "Resto"
+    ))
+
+
+tabla <- pinta_tabla(Fianzas_viviendas_pj,
+                     "tipo_pj_agr", 
+                     "Tipo Entidad Arrendador más frecuentes", 
+                     orden ="SI")
+print(tabla)
+
+primera_letra <- ifelse(Fianzas_viviendas_pj$tipo_pj_agr == "Resto",
+                        "Resto",
+                        substr(Fianzas_viviendas_pj$tipo_pj_agr,1,1) )  %>%
+    as.factor()
+
+# Ordeno los factores por frecuencia de los factores y me llevo el factor "Resto" al final, detrás del penúltimo
+posicion_resto <- length(levels(primera_letra)) - 1
+orden_factores <- fct_relevel(fct_infreq(primera_letra), "Resto", after = posicion_resto)
+
+ggplot(Fianzas_viviendas_pj, aes(x = orden_factores)) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Tipo Entidad Arrendador")+
+  theme_minimal()
+
+
+
+por aqui voy.
+Usar  fct_explicit_na() para definir el valor de los NA y que en los graficos y tablas se siga quedando al final
+https://epirhandbook.com/es/factors.html
+
+Fianzas_viviendas %>% 
+  tabyl(sexo_arrendador)
+
+Fianzas_viviendas %>% 
+  mutate(sexo_arrendador = fct_na_value_to_level(sexo_arrendador, level  = "Missing")) %>% 
+  tabyl(sexo_arrendador) 
+
+kk <-Fianzas_viviendas %>% 
+  mutate(sexo_arrendador = fct_na_value_to_level(sexo_arrendador, level  = "Missing")) 
+
+levels(kk$sexo_arrendador)
+sum(kk$sexo_arrendador == "Mujeres")
+sum(is.na(kk$sexo_arrendador))
+
+orden_factores <- fct_relevel(fct_infreq(kk$sexo_arrendador), "Mujeres", after = 2)
+
+kk<-pinta_tabla(Fianzas_viviendas, "tipo_entidad_arrendador", "Tipo Entidad Arrendador")
+kk
 #.-.-.-.-.-.-
 #sexo_arrendador
+
+Fianzas_viviendas <- Fianzas_viviendas %>%
+  mutate (sexo_arrendador = as.character(sexo_arrendador))
+
+#opcion 1
+Fianzas_viviendas <- Fianzas_viviendas %>%
+  mutate (sexo_arrendador = replace_na(sexo_arrendador,"NEspec")) %>% 
+  mutate (sexo_arrendador = factor(sexo_arrendador, 
+                                   levels = c("M", "V","NEspec"), 
+                                   labels = c("Mujer", "Varón","No Especificado")))
 Resumen_basico(Fianzas_viviendas$sexo_arrendador)
-ggplot(Fianzas_viviendas, aes(x = sexo_arrendador),) +
+ggplot(Fianzas_viviendas, aes(x = fct_infreq(sexo_arrendador)),) +
   geom_bar(fill = "cyan" , color = "steelblue")+  #(fill = "steelblue", bins = 2) +
   geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3) +
   labs(x = "Sexo del arrendador",
        y = "Frecuencia", title = "Sexo del arrendador")+
-  scale_x_discrete(labels = function(x) 
-    ifelse(is.na(x), "No especificado", c("V" = "Varón", "M" = "Mujer"))) +
   theme_minimal()
 
-#.-.-.-.-.-.-
-#tipo_persona_arrendador
-Resumen_basico(Fianzas_viviendas$tipo_persona_arrendador)
-# Crear el gráfico de barras con etiquetas de altura
-ggplot(Fianzas_viviendas, aes(x = tipo_persona_arrendador)) +
-  geom_bar(fill = "cyan", color = "steelblue") +
+#opcion 2
+Fianzas_viviendas <- Fianzas_viviendas %>%
+  mutate (sexo_arrendador = factor(sexo_arrendador, 
+                                   levels = c("M", "V"), 
+                                   labels = c("Mujer", "Varón")))
+
+
+Resumen_basico(Fianzas_viviendas$sexo_arrendador)
+ggplot(Fianzas_viviendas, aes(x = fct_infreq(sexo_arrendador)),) +
+  geom_bar(fill = "cyan" , color = "steelblue")+  #(fill = "steelblue", bins = 2) +
   geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3) +
-  labs(x = "Tipo persona arrendador", 
-       y = "Frecuencia",
-       title = "Tipo persona arrendador") +
-  scale_x_discrete(labels = function(x) 
-    ifelse(is.na(x), "No especificado", c("F" = "Física", "J" = "Jurídica"))) +
+  labs(x = "Sexo del arrendador",
+       y = "Frecuencia", title = "Sexo del arrendador")+
+   scale_x_discrete(labels = function(x) 
+     ifelse(is.na(x), "No especificado", c("V" = "Varóncito", "M" = "Mujercita"))) +
   theme_minimal()
+
+
+
+
+
 
 #.-.-.-.-.-.-
 #tipo_entidad_arrendador
