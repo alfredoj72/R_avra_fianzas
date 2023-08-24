@@ -1,6 +1,9 @@
 # A partir de los datos de avra genera 3 tablas con los datos que casan con
 # 1 vivienda, los que casan con mas de 1 y los que no casan
 
+# Quitamos la notación científica
+options(scipen = 999) # Para que no use notación científica
+options(digits = 2)  # Para que muestre solo 2 decimales
 
 #BORRAR todos los ELEMENTOS en memoria
 rm(list = ls())
@@ -38,7 +41,8 @@ salva_tablas_avra_catastro(avra_catastro_2022)
 # Salva en el directorio datos_output la información en .Rdata
 save(avra_catastro_2022, file = "./datos_output/avra_catastro_2022.RData")
 
-# Prepara para el análisis, genera campos calculados, FILTRA los registros
+# Prepara para el análisis, solo con la tabla de vivendas del registro con
+# los datos del catastro conectados, genera campos calculados, FILTRA los registros
 # válidos para el análisis, añade campos de POTA y secciones censales y crea factores
 datos_para_analisis_2022 <- preparacion_datos(avra_catastro_2022)
 

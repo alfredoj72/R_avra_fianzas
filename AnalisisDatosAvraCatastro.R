@@ -1,7 +1,8 @@
 
 # Realiza un analisis descriptivo de las variables.
 
-paquetes_necesarios = c("sf","tidyverse","flextable") # c( "ggplot2","classInt") 
+#################  INICIO    ################
+paquetes_necesarios = c("sf","tidyverse","flextable","tmap") # c( "ggplot2","classInt") 
 for (paq in paquetes_necesarios){
   if (!(paq %in% rownames(installed.packages()))){
     install.packages(paq, dependencies = T)}
@@ -9,43 +10,63 @@ for (paq in paquetes_necesarios){
 }
 rm(paq, paquetes_necesarios)
 
-# parto
+# # parto
+# rm(list =ls())
+# load("./datos_output/datos_para_analisis_2022.RData")
+# contenedor <- datos_para_analisis_2022 ; rm(datos_para_analisis_2022)
+# datos <- contenedor[["Fianzas_viviendas"]]
+# rm(contenedor)
+
 rm(list =ls())
 load("./datos_output/avra_catastro_2022.RData")
-datos <- avra_catastro_2022 ; rm(avra_catastro_2022)
-avra_datos_originales <- datos[["originales"]]
-# avra_catastro <- datos[["avra_catastro"]]
-# tabla_frecuencias  <- datos[["tabla_frecuencias"]]
-# tabla_frecuencias_final  <- datos[["tabla_frecuencias_final"]]
-# Fianzas_casan_1_vivienda <- datos[["Fianzas_casan_1_vivienda"]]
-# Fianzas_no_casan_catastro <- datos[["Fianzas_no_casan_catastro"]]
-# Fianzas_casan_distintas_viviendas <- datos[["Fianzas_casan_distintas_viviendas"]]
-# Fianzas_casan_distintas_viviendas_case <- datos[["Fianzas_casan_distintas_viviendas_case"]]
+contenedor <- avra_catastro_2022
+rm(avra_catastro_2022)
+avra_datos_originales <- contenedor[["originales"]]
+# avra_catastro <- contenedor[["avra_catastro"]]
+ tabla_frecuencias  <- contenedor[["tabla_frecuencias"]]
+ tabla_frecuencias_final  <- contenedor[["tabla_frecuencias_final"]]
+# Fianzas_casan_1_vivienda <- contenedor[["Fianzas_casan_1_vivienda"]]
+# Fianzas_no_casan_catastro <- contenedor[["Fianzas_no_casan_catastro"]]
+# Fianzas_casan_distintas_viviendas <- contenedor[["Fianzas_casan_distintas_viviendas"]]
+# Fianzas_casan_distintas_viviendas_case <- contenedor[["Fianzas_casan_distintas_viviendas_case"]]
+datos <- avra_datos_originales
+rm(contenedor)
+
+#Leo las tablas de diccionario de datos y defino la función que recupera la 
+# etiqueta de un campo a partir de su nombre
 
 
-load("./datos_output/datos_para_analisis_2022.RData")
-Fianzas_viviendas <- datos_para_analisis_2022[["Fianzas_viviendas"]]
-Fianzas_viviendas <- st_drop_geometry(Fianzas_viviendas)
-rm(datos_para_analisis_2022)
+
+# Defino un tema propio para aplicar a todos los graficos que haga con ggplot2
+# hacer a mi gusto con los parametros que tengo más abajo
+# por aqui voy
+tema_ams <- theme_bw() + theme(text = element_text(family = "Asap-Bold", color = "#25636e"), 
+                                panel.grid.major = element_blank(),
+                                panel.grid.minor = element_blank(), 
+                                plot.caption=element_text(hjust=1,size=9,colour="grey30"),
+                                plot.subtitle=element_text(face="italic",size=12,colour="grey40"),
+                                plot.title=element_text(size=12,face="bold", color = "red"),
+                                axis.text.x = element_text(family = "Asap-Bold", color = "grey40"),
+                                axis.text.y = element_text(family = "Asap-Bold", color = "grey40"), 
+                                #legend.position = "none" # Removemos la leyenda. 
+)
+
+tema_ams2 <- theme_bw() +
+  theme(plot.background = element_rect (size = 1, color ="blue", fill ="black"),
+        text = element_text(size = 12, family = "Serif", color= "ivory"),
+        axis.text.y = element_text(colour = "purple"),
+        axis.text.x = element_text(colour ="red"),
+        panel.background = element_rect(fill ="green"))
 
 
-
+############# ANALISIS VARIABLE TODAS JUNTAS Y POR CONSOLA ###########
 #-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
-# Indice
-# Primero voy a hacer una descripción breve de las variables
-# A continuación más detallada de cada variable
-# Por último haremos un análisis cruzado variables
-
-# Descripción breve de variables
+# 
+# Funciones que voy a emplear en la descripcion de las variables 
 
 # La descripción de variables será distinta en función de si la variable es
 # tipo numerico, texto o factor.
 
-cat ("\n El número total de registros para el análisis es ",
-     nrow(Fianzas_viviendas), "\n")
-
-
-#Fianzas_viviendas <- Fianzas_viviendas %>% select(-num_repeticiones)
 
 # Función para obtener la descripción de una columna de tipo texto
 get_text_description <- function(column) {
@@ -79,8 +100,8 @@ Mode <- function(x) {
 }
 
 # Obtener descripción de cada columna del dataframe
-for (col in names(Fianzas_viviendas)) {
-  column <- Fianzas_viviendas[[col]]
+for (col in names(datos)) {
+  column <- datos[[col]]
   
   cat("Columna '", col, "':\n")
   
@@ -113,9 +134,8 @@ for (col in names(Fianzas_viviendas)) {
   cat("\n")
 }
 
-
-#-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
-# Analisis variable a variable
+############# ANALISIS VARIABLE A VARIABLE #################
+### Definición de funciones y parámetros flextable ####
 
 # Defino funciones para el analisis individualizado de variables
 # Función para obtener la descripción de una columna de tipo texto
@@ -316,6 +336,7 @@ pinta_tabla2 <- function(datos,campo,campo_descriptivo,orden = "NO"){
   return(tabla_impresa)
 }
 
+
 pinta_tabla3 <- function(datos,campo,campo_descriptivo,orden = "NO"){
   #browser()
   campo <- datos[[campo]]
@@ -328,7 +349,7 @@ pinta_tabla3 <- function(datos,campo,campo_descriptivo,orden = "NO"){
     mutate(Porcentaje = 100 * Casos / sum(Casos), # se puede usar := en vez de =
            campo = as.character(campo),
            Casos_v = as.integer(ifelse(is.na(campo), 0, Casos)),
-           Porcentaje_v = 100 * Casos_v / sum(Casos_v),
+           Porcentaje_v = ifelse(Casos_v >0 , 100 * Casos_v / sum(Casos_v), NA) ,
            campo = ifelse(is.na(campo),"No Especificado", campo)) %>%  # se puede usar := en vez de =
     select(-Casos_v)
   
@@ -351,7 +372,7 @@ pinta_tabla3 <- function(datos,campo,campo_descriptivo,orden = "NO"){
                Casos = sum(Casos),
                Porcentaje = sum(Porcentaje),
                #Casos_v = sum(Casos_v),
-               Porcentaje_v = sum(Porcentaje_v))
+               Porcentaje_v = sum(Porcentaje_v, na.rm = TRUE))
   
   tabla <- bind_rows(tabla, suma_fila) #%>% 
   #mutate({{campo}} := ifelse(is.na({{campo}}), "Suma", {{campo}}))
@@ -388,135 +409,239 @@ pinta_tabla3 <- function(datos,campo,campo_descriptivo,orden = "NO"){
 }
 
 
+# ANALISIS DE DATOS AUSENTES (NA) #####
 
+#pacman::p_load(naniar)
+library(naniar)
+
+# Porcentaje de TODOS los valores del dataframe que faltan
+pct_miss(datos)
+
+# Porcentaje de filas en las que falta algún valor
+pct_miss_case(datos)   # usa n_complete() para los recuentos
+
+
+# Porcentaje de filas que están completas (no faltan valores) 
+pct_complete_case(datos) # usa n_complete() para los recuentos
+
+datos %>% 
+  gg_miss_var( show_pct = TRUE)
+
+datos %>% 
+  gg_miss_var(show_pct = TRUE, facet = tipo_persona_arrendador)
+
+# Gráfico de valores faltantes en todo el dataframe
+gg_miss_fct(datos, tipo_persona_arrendador) + labs(title = "Valores no disponibles")
+######## ANALISIS VARIABLE A VARIABLE ###############################
+# Primero voy a hacer una descripción breve de las variables
+# Por último haremos un análisis cruzado variables
+
+# Descripción breve de variables
 # Comienzo el analisis de cada variable
+
+
+cat ("\n El número total de registros para el análisis es",
+     nrow(datos), "\n")
+stringr::str_glue("{nrow(datos)} Total de registros") 
+
+cat ("La tabla que resume el resultado de la conexión de los datos de viviendas con los datos de catastro")
+
+
+tabla_frecuencias <- tabla_frecuencias %>%
+  mutate(`Frec. Absoluta` = as.integer(`Frec. Absoluta`)) 
+
+suma_fila <- tabla_frecuencias %>%
+  summarise( `Frec. Absoluta` = sum(`Frec. Absoluta`),
+             `Frec. Relativa` = sum(`Frec. Relativa`))
+
+
+tabla_frecuencias <- bind_rows(tabla_frecuencias, suma_fila) %>% 
+ mutate(enlace = ifelse(is.na(enlace), "Suma", enlace))
+
+tabla_frecuencias %>% 
+      flextable() %>%  
+      set_header_labels(enlace = "Tipo enlace") %>% 
+  colformat_double() %>% 
+  autofit() %>% 
+  border_remove() %>% 
+  align(align = "center", j = 1, part = "all") %>% 
+  hline(part = "header", i = 1, border = border_style1)   %>%
+  hline(part = "body", i = nrow(tabla_frecuencias)-1, border = border_style2) 
+
+
+
+
+cat ("Hay casos en las que la Referencia Catastral indicada en el Registro de Fianzas")
+cat ("enlaza en catastro con más de una vivienda (idenfificada por el IECA)")
+cat ("Cuando todas las viviendas de catastro asociadas a una vivienda del Registro")
+cat ("son muy similares (coeficiente de variación <2) enlazamos con una de ellas")
+cat ("Es por esto que al final la tabla de conexiones con catastro queda:")
+
+suma_fila <- tabla_frecuencias_final %>%
+  summarise(casos= sum(casos),
+            frec_relativa = sum(frec_relativa))
+
+tabla_frecuencias_final <- bind_rows(tabla_frecuencias_final, suma_fila) %>% 
+  mutate(tipo = ifelse(is.na(tipo), "Suma", tipo))
+
+tabla_frecuencias_final %>%
+  flextable() %>%  
+  set_header_labels(tipo = "Tipo enlace",
+                    casos = "Frec.Absoluta",
+                    frec_relativa = "Frec.Relativa") %>% 
+  colformat_double() %>% 
+  autofit() %>% 
+  border_remove() %>% 
+  #align(align = "center", j = 1, part = "all") %>% 
+  hline(part = "header", i = 1, border = border_style1)   %>%
+  hline(part = "body", i = nrow(tabla_frecuencias)-1, border = border_style2) 
+
+
+
+
 # 
 # 
 # 
 #.-.-.-.-.-.-
 #codigo_expediente__rue
-Resumen_basico(Fianzas_viviendas$codigo_expediente__rue)
+Resumen_basico(datos$codigo_expediente__rue)
 
 #.-.-.-.-.-.-
 #numero_documento
-Resumen_basico(Fianzas_viviendas$numero_documento)
+Resumen_basico(datos$numero_documento)
 
 #.-.-.-.-.-.-
 #nif_cif_arrendador_anonimizado
-Resumen_basico(Fianzas_viviendas$nif_cif_arrendador_anonimizado)
+Resumen_basico(datos$nif_cif_arrendador_anonimizado)
 
 
-#.-.-.-.-.-.-
+
+######### DEFINICION DE FACTORES ############
 #
 
 # Si convierto los NA en un nivel del factor comenzará a ordenarse como el resto
 # de los niveles, si lo dejo como NA se van siempre al último de la lista.
 
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  mutate (tipo_persona_arrendador = as.character(tipo_persona_arrendador),
-          tipo_entidad_arrendador = as.factor(tipo_entidad_arrendador),
-          sexo_arrendador = as.character(sexo_arrendador))
+# datos <- datos %>%
+#   mutate (tipo_persona_arrendador = as.character(tipo_persona_arrendador),
+#           sexo_arrendador = as.character(sexo_arrendador))
 
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  mutate (tipo_persona_arrendador = replace_na(tipo_persona_arrendador,"NEspec")) %>% # no hay casos
+datos <- datos %>%
+  #mutate (tipo_persona_arrendador = replace_na(tipo_persona_arrendador,"NEspec")) %>% # no hay casos
   mutate (tipo_persona_arrendador = factor(tipo_persona_arrendador, 
                                    levels = c("F", "J"), 
                                    labels = c("Física", "Jurídica")),
+          tipo_entidad_arrendador = as.factor(tipo_entidad_arrendador),
           sexo_arrendador = factor(sexo_arrendador,
                                    levels = c("M", "V"),
-                                   labels = c("Mujeres", "Hombres")))
+                                   labels = c("Mujeres", "Hombres")),
+          sexo_arrendatario = factor(sexo_arrendatario,
+                                   levels = c("M", "V"),
+                                   labels = c("Mujeres", "Hombres")),
+          nacionalidad_arrendatario = factor(nacionalidad_arrendatario),
+          tipo_de_arrendamiento = case_when(     #otra forma podría ser usando na_if()
+            tipo_de_arrendamiento == "AMUEBLADO"       ~ "Amueblado", 
+            tipo_de_arrendamiento == "SIN AMUEBLAR"    ~ "Sin Amueblar",
+               TRUE                                 ~ NA_character_) , 
+          tipo_de_arrendamiento = factor(tipo_de_arrendamiento),
+          provincia_806 = factor (provincia_806, 
+                                  labels = c("Almería", "Cádiz","Córdoba","Granada","Huelva","Jaén","Málaga","Sevilla"))
+          )
+
+
+
 
 
 ####################   tipo_persona_arrendador       ##################
 
 #Resumen_basico(Fianzas_viviendas$tipo_persona_arrendador)
-tabla <- pinta_tabla(Fianzas_viviendas, "tipo_persona_arrendador", "Tipo Persona Arrendador")
+tabla <- pinta_tabla3(datos, "tipo_persona_arrendador", "Tipo Persona Arrendador")
 print(tabla)
 
-tabla <- pinta_tabla3(Fianzas_viviendas, "tipo_persona_arrendador", "Tipo Persona Arrendador")
-print(tabla)
+# tabla <- pinta_tabla3(datos, "tipo_persona_arrendador", "Tipo Persona Arrendador")
+# print(tabla)
 
-# Crear el gráfico de barras con etiquetas de altura
-ggplot(Fianzas_viviendas, aes(x = tipo_persona_arrendador)) +
-  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+# Gráfico de barras con etiquetas de altura
+ggplot(datos, aes(x = tipo_persona_arrendador)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..),
+                            vjust = +0.5, size = 3,
+                            color = "cornsilk4") +
   labs(x = "", 
        y = "Frecuencia",
        title = "Tipo de persona del arrendador") +
   theme_minimal()
 
-
-# Calcular las proporciones del campo sexo_arrendador
-proporcion <- Fianzas_viviendas %>%
-  count(tipo_persona_arrendador) %>%
-  mutate(proporcion = n / sum(n))
-
-# Crear el gráfico de barras con las proporciones
-ggplot(proporcion, aes(x = tipo_persona_arrendador, y = proporcion)) +
-  geom_bar(stat = "identity", fill = "cornsilk1", color = "cornsilk2") +
-  geom_text(aes(label = scales::percent(proporcion)), vjust = 0.5, color = "cornsilk4") +
-  labs(x = "Tipo de Persona del Arrendador",
-       y = "Proporción",
-       title = "Tipo de Persona del Arrendador")
-
-
+# Gráfico de barras de las proporciones con etiquetas de altura
+ggplot(datos, aes(x = tipo_persona_arrendador)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", y = "Frecuencia", title = "Tipo de persona del arrendador") +
+  scale_y_continuous(labels = scales::percent_format(scale = 100)) +
+  theme_minimal()
 
 
 ####################   sexo_arrendador       ##################
 
-Fianzas_viviendas_pf <- Fianzas_viviendas %>%
-                        filter(tipo_persona_arrendador == "Física")
-tabla <- pinta_tabla(Fianzas_viviendas_pf,
+datos_pf <- datos %>%
+              filter(tipo_persona_arrendador == "Física")
+tabla <- pinta_tabla(datos_pf,
                      campo = "sexo_arrendador",
                      campo_descriptivo = "Sexo Arrendador",
                      orden = "SI")
 print(tabla)
 
-tabla <- pinta_tabla3(Fianzas_viviendas_pf,
+tabla <- pinta_tabla3(datos_pf,
                      campo = "sexo_arrendador",
                      campo_descriptivo = "Sexo Arrendador",
                      orden = "SI")
 print(tabla)
 
 # Gráfico incluyendo valores faltantes
-ggplot(Fianzas_viviendas_pf, aes(x = sexo_arrendador)) +
+ggplot(datos_pf, aes(x = sexo_arrendador)) +
   geom_bar(fill = "cornsilk1", color = "cornsilk2") +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
   labs(x = "", 
        y = "Frecuencia",
        title = "Sexo Arrendador") +
-  scale_x_discrete(labels = c(levels(Fianzas_viviendas_pf$sexo_arrendador), "No especificado"))+
-  # scale_x_discrete(labels = function(x) 
-  #   ifelse(is.na(x), "No especificado", c("F" = "Física", "J" = "Jurídica"))) +
+  scale_x_discrete(labels = c(levels(datos_pf$sexo_arrendador), "No especificado"))+
+  # scale_x_discrete(labels = function(x)              #forma alternativa de asignar etiquetas
+  #   ifelse(is.na(x), "No especificado", c("F" = "Mujer", "V" = "Hombre"))) +
   theme_minimal()
 
 # Gráfico SIN valores faltantes
 
-ggplot(drop_na(Fianzas_viviendas_pf, sexo_arrendador),
+ggplot(drop_na(datos_pf, sexo_arrendador),
        aes(x = sexo_arrendador)) +
   geom_bar(fill = "cornsilk1", color = "cornsilk2") +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
   labs(x = "", 
        y = "Frecuencia",
        title = "Sexo Arrendador") +
-  scale_x_discrete(labels = c(levels(Fianzas_viviendas_pf$sexo_arrendador), "No especificado"))+
+  scale_x_discrete(labels = c(levels(datos_pf$sexo_arrendador), "No especificado"))+
   theme_minimal()
 
 
-# Calcular las proporciones del campo sexo_arrendador
-proporcion_sexo <- Fianzas_viviendas %>%
-  count(sexo_arrendador) %>%
-  mutate(proporcion = n / sum(n))
 
-# Crear el gráfico de barras con las proporciones
-ggplot(proporcion_sexo, aes(x = sexo_arrendador, y = proporcion)) +
-  geom_bar(stat = "identity", fill = "cornsilk1", color = "cornsilk2") +
-  geom_text(aes(label = scales::percent(proporcion)), vjust = -0.5, color = "cornsilk4") +
-  labs(x = "Sexo del Arrendador",
-       y = "Proporción",
-       title = "Proporción de Sexo del Arrendador")
-
-rm(Fianzas_viviendas_pf)
+# Otra forma de realizar el grafíco de proporciones
+#
+# # Calcular las proporciones del campo sexo_arrendador
+# proporcion_sexo <- datos %>%
+#   count(sexo_arrendador) %>%
+#   mutate(proporcion = n / sum(n))
+# 
+# # Crear el gráfico de barras con las proporciones
+# ggplot(proporcion_sexo, aes(x = sexo_arrendador, y = proporcion)) +
+#   geom_bar(stat = "identity", fill = "cornsilk1", color = "cornsilk2") +
+#   geom_text(aes(label = scales::percent(proporcion)), vjust = 0.5, color = "cornsilk4") +
+#   labs(x = "Sexo del Arrendador",
+#        y = "Proporción",
+#        title = "Proporción de Sexo del Arrendador")+
+#   theme_minimal()
+# 
+# rm(Fianzas_viviendas_pf)
 
 
 
@@ -524,44 +649,58 @@ rm(Fianzas_viviendas_pf)
 
 ####################   tipo_entidad_arrendador       ##################
 
-Fianzas_viviendas_pj <- Fianzas_viviendas %>%
+datos_pj <- datos %>%
   filter(tipo_persona_arrendador == "Jurídica")
-tabla <- pinta_tabla(Fianzas_viviendas_pj,
+tabla <- pinta_tabla(datos_pj,
                      "tipo_entidad_arrendador", "Tipo Entidad Arrendador")
 print(tabla)
-tabla <- pinta_tabla(Fianzas_viviendas_pj,
+tabla <- pinta_tabla(datos_pj,
                      "tipo_entidad_arrendador", "Tipo Entidad Arrendador", orden ="SI")
 print(tabla)
 
 
 # pinta la grafica
 
-ggplot(Fianzas_viviendas_pj, aes(x = tipo_entidad_arrendador)) +
+plot <- ggplot(datos_pj, aes(x = tipo_entidad_arrendador)) +
   geom_bar(fill = "cornsilk1", color = "cornsilk2") +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
   labs(x = "", 
        y = "Frecuencia",
        title = "Tipo Entidad Arrendador") +
-  scale_x_discrete(labels = levels(Fianzas_viviendas_pj$tipo_entidad_arrendador))+
+  scale_x_discrete(labels = levels(datos_pj$tipo_entidad_arrendador))+
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+print(plot)
+plotly::ggplotly(plot)
+
+ggplot(datos_pj, aes(x = tipo_entidad_arrendador ))  +
+                       geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+                       geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
+                       labs(x = "", 
+                            y = "Frecuencia",
+                            title = "Tipo Entidad Arrendador") +
+                       scale_x_discrete(labels = str_wrap(levels(datos_pj$tipo_entidad_arrendador), width = 20))+
+                       theme_minimal() +
+                       theme(axis.text.x = element_text(angle = 45, hjust = 1))
+                     
 
 ######## 2da version con texto corto, columnas ordenadas por frecuencia
 
-primera_letra <- substr(Fianzas_viviendas_pj$tipo_entidad_arrendador,1,1) %>% as.factor()
-ggplot(Fianzas_viviendas_pj, aes(x = (fct_infreq(tipo_entidad_arrendador)))) +
+primera_letra <- substr(datos_pj$tipo_entidad_arrendador,1,1) %>% as.factor()
+ggplot(datos_pj, aes(x = (fct_infreq(tipo_entidad_arrendador)))) +
   geom_bar(fill = "cornsilk1", color = "cornsilk2") +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
   labs(x = "", 
        y = "Frecuencia",
        title = "Tipo Entidad Arrendador") +
   scale_x_discrete(labels = levels(primera_letra))+
   theme_minimal()
 
+# Ahora agrupo factores para quedarme con los más frecuentes (4 en este caso)
 N_grupos <- 4 # número de factores que dejo 
 # Dejo solo los 4 tipos más frecuentes 
-Fianzas_viviendas_pj <- Fianzas_viviendas_pj %>% 
+datos_pj <- datos_pj %>% 
     mutate(tipo_pj_agr = fct_lump(
       tipo_entidad_arrendador,
       n = N_grupos,
@@ -569,261 +708,801 @@ Fianzas_viviendas_pj <- Fianzas_viviendas_pj %>%
     ))
 
 
-tabla <- pinta_tabla(Fianzas_viviendas_pj,
+tabla <- pinta_tabla(datos_pj,
                      "tipo_pj_agr", 
                      "Tipo Entidad Arrendador más frecuentes", 
                      orden ="SI")
 print(tabla)
 
-primera_letra <- ifelse(Fianzas_viviendas_pj$tipo_pj_agr == "Resto",
+primera_letra <- ifelse(datos_pj$tipo_pj_agr == "Resto",
                         "Resto",
-                        substr(Fianzas_viviendas_pj$tipo_pj_agr,1,1) )  %>%
+                        substr(datos_pj$tipo_pj_agr,1,1) )  %>%
     as.factor()
 
 # Ordeno los factores por frecuencia de los factores y me llevo el factor "Resto" al final, detrás del penúltimo
-posicion_resto <- length(levels(primera_letra)) - 1
-orden_factores <- fct_relevel(fct_infreq(primera_letra), "Resto", after = posicion_resto)
+posicion_penultima <- length(levels(primera_letra)) - 1
+orden_factores <- fct_relevel(fct_infreq(primera_letra), "Resto", after = posicion_penultima)
 
-ggplot(Fianzas_viviendas_pj, aes(x = orden_factores)) +
+ggplot(datos_pj, aes(x = orden_factores)) +
   geom_bar(fill = "cornsilk1", color = "cornsilk2") +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3, color = "cornsilk4") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
   labs(x = "", 
        y = "Frecuencia",
        title = "Tipo Entidad Arrendador")+
   theme_minimal()
 
+#Ahora igual pero con el nombre largo
+# Ordeno los factores por frecuencia de los factores y me llevo el factor "Resto" al final, detrás del penúltimo
+posicion_penultima <- length(levels(datos_pj$tipo_pj_agr)) - 1
+orden_factores <- fct_relevel(fct_infreq(datos_pj$tipo_pj_agr), "Resto", after = posicion_penultima)
 
-
-por aqui voy.
-Usar  fct_explicit_na() para definir el valor de los NA y que en los graficos y tablas se siga quedando al final
-https://epirhandbook.com/es/factors.html
-
-Fianzas_viviendas %>% 
-  tabyl(sexo_arrendador)
-
-Fianzas_viviendas %>% 
-  mutate(sexo_arrendador = fct_na_value_to_level(sexo_arrendador, level  = "Missing")) %>% 
-  tabyl(sexo_arrendador) 
-
-kk <-Fianzas_viviendas %>% 
-  mutate(sexo_arrendador = fct_na_value_to_level(sexo_arrendador, level  = "Missing")) 
-
-levels(kk$sexo_arrendador)
-sum(kk$sexo_arrendador == "Mujeres")
-sum(is.na(kk$sexo_arrendador))
-
-orden_factores <- fct_relevel(fct_infreq(kk$sexo_arrendador), "Mujeres", after = 2)
-
-kk<-pinta_tabla(Fianzas_viviendas, "tipo_entidad_arrendador", "Tipo Entidad Arrendador")
-kk
-#.-.-.-.-.-.-
-#sexo_arrendador
-
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  mutate (sexo_arrendador = as.character(sexo_arrendador))
-
-#opcion 1
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  mutate (sexo_arrendador = replace_na(sexo_arrendador,"NEspec")) %>% 
-  mutate (sexo_arrendador = factor(sexo_arrendador, 
-                                   levels = c("M", "V","NEspec"), 
-                                   labels = c("Mujer", "Varón","No Especificado")))
-Resumen_basico(Fianzas_viviendas$sexo_arrendador)
-ggplot(Fianzas_viviendas, aes(x = fct_infreq(sexo_arrendador)),) +
-  geom_bar(fill = "cyan" , color = "steelblue")+  #(fill = "steelblue", bins = 2) +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3) +
-  labs(x = "Sexo del arrendador",
-       y = "Frecuencia", title = "Sexo del arrendador")+
-  theme_minimal()
-
-#opcion 2
-Fianzas_viviendas <- Fianzas_viviendas %>%
-  mutate (sexo_arrendador = factor(sexo_arrendador, 
-                                   levels = c("M", "V"), 
-                                   labels = c("Mujer", "Varón")))
-
-
-Resumen_basico(Fianzas_viviendas$sexo_arrendador)
-ggplot(Fianzas_viviendas, aes(x = fct_infreq(sexo_arrendador)),) +
-  geom_bar(fill = "cyan" , color = "steelblue")+  #(fill = "steelblue", bins = 2) +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3) +
-  labs(x = "Sexo del arrendador",
-       y = "Frecuencia", title = "Sexo del arrendador")+
-   scale_x_discrete(labels = function(x) 
-     ifelse(is.na(x), "No especificado", c("V" = "Varóncito", "M" = "Mujercita"))) +
-  theme_minimal()
-
-
-
-
-
-
-#.-.-.-.-.-.-
-#tipo_entidad_arrendador
-Resumen_basico(Fianzas_viviendas$tipo_entidad_arrendador)
-ggplot(Fianzas_viviendas, aes(x = substr(tipo_entidad_arrendador,1,1))) +
-  geom_bar(fill = "cyan", color = "steelblue") +
-  geom_text(stat = "count", aes(label = ..count..), vjust = -0.5, size = 3) +
-  labs(x = "Tipo entidad arrendador", 
+ggplot(datos_pj, aes(x = orden_factores)) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
        y = "Frecuencia",
-       title = "Tipo entidad arrendador") +
+       title = "Tipo Entidad Arrendador")+
+  scale_x_discrete(labels = str_wrap(levels(datos_pj$tipo_pj_agr), width = 20))+
   theme_minimal()+
-  theme(axis.text.x = element_text( vjust = 0.1, hjust = 0.3))+
-  scale_x_discrete(labels = function(x) ifelse(is.na(x), "No esp.", x))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-#.-.-.-.-.-.-
-#sexo_arrendatario
-Resumen_basico(Fianzas_viviendas$sexo_arrendatario)
-ggplot(Fianzas_viviendas, aes(x = sexo_arrendatario),) +
-  geom_bar(fill = "cyan" , color = "steelblue")+  #(fill = "steelblue", bins = 2) +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3) +
-  labs(x = "Sexo del arrendatario",
-       y = "Frecuencia", title = "Sexo del arrendatario")+
-  scale_x_discrete(labels = function(x) 
-    ifelse(is.na(x), "No especificado", c("V" = "Varón", "M" = "Mujer"))) +
+
+
+
+####################   sexo_arrendatario       ##################
+
+
+Resumen_basico(datos$sexo_arrendatario)
+tabla <- pinta_tabla(datos, "sexo_arrendatario", "Sexo Arrendatario")
+print(tabla)
+
+tabla <- pinta_tabla3(datos, "sexo_arrendatario", "Sexo Arrendatario")
+print(tabla)
+
+# Gráfico de barras con etiquetas de altura
+ggplot(datos, aes(x = sexo_arrendatario)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..),
+            vjust = +0.5, size = 3,
+            color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Sexo del Arrendatario") +
+  scale_x_discrete(labels = c(levels(datos$sexo_arrendatario), "No especificado"))+
   theme_minimal()
 
-#.-.-.-.-.-.-
-#nacionalidad_arrendatario
-Resumen_basico(Fianzas_viviendas$nacionalidad_arrendatario)
-ggplot(Fianzas_viviendas, aes(x = nacionalidad_arrendatario),) +
-  geom_bar(fill = "cyan" , color = "steelblue")+  #(fill = "steelblue", bins = 2) +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3) +
-  labs(x = "Nacionalidad del arrendatario",
-       y = "Frecuencia", title = "Nacionalidad del arrendatario")+
-  scale_x_discrete(labels = function(x) 
-    ifelse(is.na(x), "No especificado", x)) +
+# Gráfico de barras de las proporciones con etiquetas de altura
+ggplot(datos, aes(x = sexo_arrendatario)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "",
+       y = "Frecuencia", 
+       title = "Sexo del Arrendatario") +
+  scale_x_discrete(labels = c(levels(datos$sexo_arrendatario), "No especificado"))+
+  scale_y_continuous(labels = scales::percent_format(scale = 100)) +  # Configurar etiquetas en porcentaje
   theme_minimal()
 
-#.-.-.-.-.-.-
-#referencia_catastral
-Resumen_basico(Fianzas_viviendas$referencia_catastral)
+# Gráfico de barras de las proporciones sin contabilizar "No Especificado"
 
-#.-.-.-.-.-.-
-#provincia_806
-Resumen_basico(Fianzas_viviendas$provincia_806)
-ggplot(Fianzas_viviendas, aes(x = provincia_806)) +
-  geom_bar(fill = "cyan" , color = "steelblue")+  #(fill = "steelblue", bins = 2) +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3) +
-  labs(x = "Provincia Vivienda",
-       y = "Frecuencia", title = "Provincia")+
-  scale_x_discrete(labels = function(x) 
-    ifelse(is.na(x), "No especificado", x)) +
+
+ggplot(drop_na(datos, sexo_arrendatario), aes(x = sexo_arrendatario)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "",
+       y = "Frecuencia", 
+       title = "Sexo del Arrendatario") +
+  #scale_x_discrete(labels = c(levels(datos$sexo_arrendatario), "No especificado"))+
+  scale_y_continuous(labels = scales::percent_format(scale = 100)) +  # Configurar etiquetas en porcentaje
   theme_minimal()
 
-#.-.-.-.-.-.-
-#provincia_806
-frecuencias <- table(Fianzas_viviendas$provincia_806)
-df_frecuencias <- data.frame(valor = names(frecuencias), frecuencia = frecuencias) %>%
-  arrange(desc(frecuencia.Freq))
-ggplot(df_frecuencias, 
-       aes(x = reorder(frecuencia.Var1, -frecuencia.Freq), 
-           y = frecuencia.Freq)) +
-  geom_bar(fill = "cyan", color = "steelblue", stat = "identity") +
-  geom_text(aes(label = frecuencia.Freq), vjust = 1.3, size = 3) +
-  labs(x = "Provincia", y = "Frecuencia", title = "Gráfico de barras") +
-  theme_minimal()
-rm(frecuencias,df_frecuencias)
 
-#.-.-.-.-.-.-
-#duracion_contrato_años
-Resumen_basico(Fianzas_viviendas$duracion_contrato_años)
-ggplot(Fianzas_viviendas) +
-  geom_boxplot(aes(x = "Duración contrato", 
-                   y = duracion_contrato_años),
-               fill = "steelblue",
-               color = "black") +
-  labs(x = "", y = "Años") +
+
+####################   nacionalidad_arrendatario       ##################
+
+Resumen_basico(datos$nacionalidad_arrendatario)
+tabla <- pinta_tabla(datos, "nacionalidad_arrendatario", "Nacionalidad Arrendatario")
+print(tabla)
+
+
+# Gráfico de barras con etiquetas de altura
+ggplot(datos, aes(x = nacionalidad_arrendatario)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..),
+            vjust = +0.5, size = 3,
+            color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Nacionalidad Arrendatario") +
+  #scale_x_discrete(labels = c(levels(datos$nacionalidad_arrendatario), "No especificado"))+
   theme_minimal()
 
-ggplot(Fianzas_viviendas, aes(x = duracion_contrato_años)) +
-  geom_histogram(bins = 39, fill = "steelblue", color = "cyan") +
-  labs(x = "", y = "Años") +
+# Gráfico de barras de las proporciones con etiquetas de altura
+ggplot(datos, aes(x = nacionalidad_arrendatario)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "",
+       y = "Frecuencia", 
+       title = "Nacionalidad Arrendatario") +
+  #scale_x_discrete(labels = c(levels(datos$nacionalidad_arrendatario), "No especificado"))+
+  scale_y_continuous(labels = scales::percent_format(scale = 100)) +  # Configurar etiquetas en porcentaje
+  theme_minimal()
+
+
+
+
+
+
+
+####################   tipo_de_arrendamiento       ##################
+
+Resumen_basico(datos$tipo_de_arrendamiento)
+tabla <- pinta_tabla(datos, "tipo_de_arrendamiento", "Tipo de Arrendamiento")
+print(tabla)
+
+datos <- datos %>%
+  mutate (  tipo_de_arrendamiento = case_when(     #otra forma podría ser usando na_if()
+    tipo_de_arrendamiento == "AMUEBLADO"       ~ "Amueblado", 
+    tipo_de_arrendamiento == "SIN AMUEBLAR"    ~ "Sin Amueblar",
+    TRUE                                 ~ NA_character_) , 
+    tipo_de_arrendamiento = factor(tipo_de_arrendamiento))
+
+tabla <- pinta_tabla(datos,
+                     campo = "tipo_de_arrendamiento",
+                     campo_descriptivo = "Tipo de arrendamiento",
+                     orden = "SI")
+print(tabla)
+
+tabla <- pinta_tabla3(datos,
+                      campo = "tipo_de_arrendamiento",
+                      campo_descriptivo = "Tipo de arrendamiento",
+                      orden = "SI")
+print(tabla)
+
+
+
+# Gráfico de barras con etiquetas de altura
+ggplot(datos, aes(x = tipo_de_arrendamiento)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..),
+            vjust = +0.5, size = 3,
+            color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Tipo de Arrendamiento") +
+  scale_x_discrete(labels = c(levels(datos$tipo_de_arrendamiento), "No especificado"))+
+  theme_minimal()
+
+# Gráfico de barras de las proporciones con etiquetas de altura
+ggplot(datos, aes(x = tipo_de_arrendamiento)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "",
+       y = "Frecuencia", 
+       title = "Tipo de Arrendamiento") +
+  scale_x_discrete(labels = c(levels(datos$tipo_de_arrendamiento), "No especificado"))+
+  scale_y_continuous(labels = scales::percent_format(scale = 100)) +  # Configurar etiquetas en porcentaje
+  theme_minimal()
+
+
+# Gráfico de barras de las proporciones con etiquetas de altura sin no especificados
+ggplot(drop_na(datos, tipo_de_arrendamiento), aes(x = tipo_de_arrendamiento)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "",
+       y = "Frecuencia", 
+       title = "Tipo de Arrendamiento") +
+  scale_x_discrete(labels = c(levels(datos$tipo_de_arrendamiento), "No especificado"))+
+  scale_y_continuous(labels = scales::percent_format(scale = 100)) +  # Configurar etiquetas en porcentaje
+  theme_minimal()
+
+
+
+
+
+####################   provincia_806 y municipio_806       ##################
+
+tabla <- pinta_tabla(datos,
+                     "provincia_806", "Provincia Modelo 806")
+print(tabla)
+
+tabla <- pinta_tabla(datos,
+                     "provincia_806", "Provincia Modelo 806", orden ="SI")
+
+print(tabla)
+
+
+
+# pinta la grafica
+
+ggplot(datos, aes(x = provincia_806)) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Provincia Modelo 806") +
+  #scale_x_discrete(labels = levels(datos$provincia_806))+
+  theme_minimal()#+
+  #theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+######## 2da version con columnas ordenadas por frecuencia
+
+ggplot(datos, aes(x = fct_infreq(provincia_806))) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Provincia Modelo 806") +
+  theme_minimal()#+
+#theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+# Gráfico de barras de las proporciones con etiquetas de altura
+ggplot(datos, aes(x = provincia_806)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Provincia Modelo 806") +
+  #scale_x_discrete(labels = levels(datos$provincia_806))+
+  theme_minimal()
+    
+
+# Gráfico de barras de las proporciones con etiquetas y ordenados por tamaño
+
+ggplot(datos, aes(x = fct_infreq(provincia_806))) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Provincia Modelo 806") +
+  #scale_x_discrete(labels = levels(datos$provincia_806))+
+  theme_minimal()
+
+
+
+# Gráficos de distribución de casos por municipios
+
+ggplot(datos, aes(x = fct_infreq(municipio_806))) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  #geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = Etiqueta("municipio_806")) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+# Construir el ranking de los municipios con más casos
+n_ranking <- 25
+munic_25_mayores <- datos %>% 
+  group_by(municipio_806) %>% 
+  summarise(n=n()) %>% 
+  arrange(desc(n)) %>% 
+  head(n_ranking) %>% 
+  mutate(municipio_806 = factor(municipio_806,
+                    levels = munic_25_mayores$municipio_806[order(munic_25_mayores$n)])
+  )
+
+ggplot(munic_25_mayores, aes(x = municipio_806, y = n)) +
+  geom_bar(stat="identity", fill = "cornsilk1", color = "cornsilk2") +
+  #geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = Etiqueta("municipio_806")) +
+  coord_flip() +
+  theme_minimal() 
+  
+
+
+####################   MAPAS       ##################
+# Los mapas los he preparado con ggplot, con tmap, con tmap y pasado a leaflet
+# y en leaflet desde cero.
+# Se encuentran en los ficheros "mapas ggplot.R", "mapas tmap.R"  y "mapas leaflet.R"
+
+
+
+
+
+####################   duracion_contrato_años       ##################
+
+# Ver en R epidemiologia 8 Limpieza de datos y funciones básicas.
+# un enfoque con age_categories del paquete epikit
+Resumen_basico(datos$duracion_contrato_años)
+
+ggplot(datos) +
+  geom_boxplot(aes(y = duracion_contrato_años),
+               fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Duración del contrato", y = "Años") +
+  theme_minimal()
+
+ggplot(datos) +
+  geom_density(aes(x = duracion_contrato_años),
+               fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Duración del contrato", y = "Años") +
+  theme_minimal()
+
+
+ggplot(datos, aes(x = duracion_contrato_años)) +
+  geom_histogram(bins = 40, fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Duración contrato (años)", y = "Casos") +
   theme_minimal() 
 
 
-ggplot(Fianzas_viviendas, aes(x = duracion_contrato_años)) +
+ggplot(datos, aes(x = duracion_contrato_años)) +
   geom_histogram(breaks = seq(0,40), 
-                 fill = "steelblue",
-                 color = "cyan") +
-  labs(x = "", y = "Años") +
+                 fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Duración contrato (años)", y = "Casos") +
   theme_minimal() 
 
 
 #Alternativo con indicación de la amplitud de los intervalos
-ggplot(Fianzas_viviendas,
-       aes(x = cut(duracion_contrato_años, breaks = seq(0, 40, 1), include.lowest = TRUE))) +
-  geom_bar(fill = "steelblue", color = "cyan", stat = "count", na.rm = FALSE ) +
-  labs(x = "Duración contrato", y = "Años") +
-  geom_text(stat = "count", aes(label = ..count..), vjust = -0.5, size = 3) +
-  theme_minimal()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-  coord_cartesian(xlim = c(0, 10))
+max <- max(datos$duracion_contrato_años)
+cortes <- c(seq(0, 9, 1),max(datos$duracion_contrato_años))
+etiquetas <- c(seq(1,9,1),">10")
+ggplot(datos,
+       aes(x = cut(duracion_contrato_años, breaks = cortes, include.lowest = TRUE))) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2", stat = "count", na.rm = FALSE ) +
+  labs(x = "Duración contrato (años)", y = "Casos") +
+  geom_text(stat = "count", 
+            aes(label = ..count..), 
+            vjust = -0.5,
+            size = 3, 
+            color = "cornsilk4") +
+  theme_minimal() +
+  scale_x_discrete(labels = etiquetas)+
+  #theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  #coord_cartesian(xlim = c(0, 10))+
+  coord_cartesian(ylim = c(0, 32000))
 
-#.-.-.-.-.-.-
-#Fecha de devengo
+
+#Alternativo con indicación de la amplitud de los intervalos y porcentajes
+max <- max(datos$duracion_contrato_años)
+anyo_agrupa <- 5  # A partir de 5 años los agrupa en una sola barra
+cortes <- c(seq(0, anyo_agrupa, 1),max(datos$duracion_contrato_años))
+etiquetas <- c(seq(1,anyo_agrupa,1),"Más")
+anyos <-  cut(datos$duracion_contrato_años, breaks = cortes, include.lowest = TRUE)
+ggplot(datos,
+       aes(x = anyos)) +
+  geom_bar(aes (y = ..count../sum(..count..)),
+           fill = "cornsilk1",
+           color = "cornsilk2",
+           stat = "count",
+           na.rm = FALSE ) +   # no produce ningún efecto aunque el manual diga lo contario
+  labs(x = "Duración contrato (años)", y = "Casos") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4")  +
+  theme_minimal() +
+  scale_x_discrete(labels = etiquetas)
+
+####################   Fecha de devengo  ####
 #esta variable es de tipo fecha, se describe de otra forma al resto
-Hmisc::describe(Fianzas_viviendas$fecha_devengo)
-#hay 365 fechas distintas
-Hmisc::describe(lubridate::year(Fianzas_viviendas$fecha_devengo))
-#Efectivamente todas las fecha de devengo son de 2022
+#Hmisc::describe(datos$fecha_devengo)
 
-#.-.-.-.-.-.-
-#Número de habitaciones
-Resumen_basico(Fianzas_viviendas$num_habitaciones)
-ggplot(Fianzas_viviendas) +
-  geom_boxplot(aes(x = "", 
-                   y = num_habitaciones),
-               fill = "steelblue",
-               color = "black") +
-  labs(x = "", y = "Nº habitaciones " ,title = "Número de habitaciones") +
+# Análisis por días a lo largo del año
+tabla <- pinta_tabla(datos, "fecha_devengo", "Fecha de inicio de contrato")
+print(tabla)
+
+# Gráfico de barras con etiquetas de altura
+ggplot(datos, aes(x = fecha_devengo)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  # geom_text(stat = "count", aes(label = ..count..),
+  #           vjust = +0.5, size = 3,
+  #           color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Fecha de inicio de contrato") +
   theme_minimal()
 
-ggplot(Fianzas_viviendas, aes(x = num_habitaciones)) +
-  geom_histogram(bins = 25, fill = "steelblue", color = "cyan") +
-  labs(x = "Nº Habitaciones", y = "", title = "Número de habitaciones") +
-  theme_minimal() 
 
-ggplot(Fianzas_viviendas, aes(x = num_habitaciones)) +
+
+# Análisis por meses 
+datos$mes_devengo <- lubridate::month(datos$fecha_devengo,
+                                      label = TRUE,
+                                      abbr = FALSE)
+
+#Resumen_basico(datos$mes_devengo) # No tiene sentido con campo de tipo fecha
+tabla <- pinta_tabla(datos, "mes_devengo", "Mes de inicio de contrato")
+print(tabla)
+
+datos$mes_devengo <- lubridate::month(datos$fecha_devengo,
+                                      label = TRUE,
+                                      abbr = TRUE)
+
+# Gráfico de barras con etiquetas de altura
+ggplot(datos, aes(x = mes_devengo)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..),
+            vjust = +0.5, size = 3,
+            color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Mes de inicio contrato") +
+  theme_minimal()
+
+# Gráfico de barras de las proporciones con etiquetas de altura
+ggplot(datos, aes(x = mes_devengo)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "",
+       y = "Frecuencia", 
+       title = "Mes de inicio contrato") +
+  #scale_x_discrete(labels = c(levels(datos$nacionalidad_arrendatario), "No especificado"))+
+  scale_y_continuous(labels = scales::percent_format(scale = 100)) +  # Configurar etiquetas en porcentaje
+  theme_minimal()
+
+
+
+
+
+# Análisis por días del mes
+datos$dia_devengo <- lubridate::day(datos$fecha_devengo)
+
+#Resumen_basico(datos$mes_devengo) # No tiene sentido con campo de tipo fecha
+tabla <- pinta_tabla(datos, "dia_devengo", "Día del mes que inicia de contrato")
+print(tabla)
+
+
+# Gráfico de barras con etiquetas de altura
+ggplot(datos, aes(x = dia_devengo)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..),
+            vjust = +0.5, size = 3,
+            color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Día del mes que inicia de contrato") +
+  theme_minimal()
+
+# Gráfico de barras de las proporciones con etiquetas de altura
+ggplot(datos, aes(x = dia_devengo)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "",
+       y = "Frecuencia", 
+       title = "Día del mes que inicia de contrato") +
+  #scale_x_discrete(labels = c(levels(datos$nacionalidad_arrendatario), "No especificado"))+
+  scale_y_continuous(labels = scales::percent_format(scale = 100)) +  # Configurar etiquetas en porcentaje
+  theme_minimal()
+
+
+####################   num_habitaciones  ####
+
+Resumen_basico(datos$num_habitaciones)
+
+ggplot(datos, aes(x = num_habitaciones)) +
   geom_histogram(aes(y = ..density..), bins = 25, fill = "steelblue", color = "cyan") +
   geom_density(adjust = 6, color = "red") +
-  labs(x = "Nº Habitaciones", y = "", title = "Número de habitaciones") +
+  labs(x = "Nº Habitaciones", y = "%", title = "Número de habitaciones") +
+  scale_y_continuous(labels = scales::percent_format(scale = 100))+  # Escala en porcentaje
+  theme_minimal() 
+
+
+
+ggplot(datos) +
+  geom_boxplot(aes(x="", y = num_habitaciones),
+               fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Número de habitaciones", y = NULL, title = "Diagrama") +
   theme_minimal()
 
-#.-.-.-.-.-.-
-#Tipo de arrendamiento
-Resumen_basico(Fianzas_viviendas$tipo_de_arrendamiento)
-ggplot(Fianzas_viviendas, aes(x = tipo_de_arrendamiento),) +
-  geom_bar(fill = "cyan" , color = "steelblue")+  #(fill = "steelblue", bins = 2) +
-  geom_text(stat = "count", aes(label = ..count..), vjust = +1.3, size = 3) +
-  labs(x = "Tipo de arrendamiento",
-       y = "Frecuencia", title = "Tipo de arrendamiento")+
-  scale_x_discrete(labels = function(x) 
-    ifelse(is.na(x), "No especificado", x)) +
+
+ggplot(datos) +
+  geom_density(aes(x = num_habitaciones),
+               fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Número de habitaciones", y = "Frecuencia") +
   theme_minimal()
 
-#.-.-.-.-.-.-
-#Importe _de_la_renta
-Resumen_basico(Fianzas_viviendas$importe_de_la_renta)
-ggplot(Fianzas_viviendas) +
-  geom_boxplot(aes(x = "", 
-                   y = importe_de_la_renta),
-               fill = "steelblue",
-               color = "black") +
-  labs(x = "", y = "Importe de la renta" ,title = "Importe de la renta") +
-  theme_minimal()
 
-ggplot(Fianzas_viviendas, aes(x = importe_de_la_renta)) +
-  geom_histogram(bins = 100, fill = "steelblue", color = "cyan") +
-  labs(x = "Importe de la renta", y = "€/mes", title = "Importe de la renta") +
-  theme_minimal()
-    
-ggplot(Fianzas_viviendas, aes(x = importe_de_la_renta)) +
-  geom_histogram(aes(y = ..density..), bins = 100, fill = "steelblue", color = "cyan") +
-  geom_density(adjust = 2, color = "red") +
-  labs(x = "Importe de la renta", y = "", title = "Importe de la renta") +
+ggplot(datos, aes(x = num_habitaciones)) +
+  geom_histogram(aes(y = ..density..),bins = 25, fill = "cornsilk1", color = "cornsilk2") +
+  geom_density(adjust = 6, color = "red") +
+  labs(x = "Duración contrato (años)", y = "Frecuencia") +
+  theme_minimal() 
+
+
+ggplot(datos, aes(x = num_habitaciones)) +
+  geom_histogram(breaks = seq(0,25), 
+                 fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Número de habitaciones", y = "Casos") +
+  theme_minimal() 
+
+
+#Alternativo con indicación de la amplitud de los intervalos
+max <- max(datos$num_habitaciones,  na.rm = TRUE)
+cortes <- c(seq(0, 9, 1),max(datos$num_habitaciones))
+etiquetas <- c(seq(1,9,1),">10")
+ggplot(datos,
+       aes(x = cut(num_habitaciones, breaks = cortes, include.lowest = TRUE))) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2", stat = "count", na.rm = FALSE ) +
+  labs(x = "Nº de habitaciones", y = "Casos") +
+  geom_text(stat = "count", 
+            aes(label = ..count..), 
+            vjust = -0.5,
+            size = 3, 
+            color = "cornsilk4") +
   theme_minimal() +
-  coord_cartesian(xlim = c(0, 2000))
+  scale_x_discrete(labels = etiquetas)+
+  #theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  #coord_cartesian(xlim = c(0, 10))+
+  coord_cartesian(ylim = c(0, 32000))
+
+
+#Alternativo con indicación de la amplitud de los intervalos y porcentajes
+max <- max(datos$num_habitaciones,  na.rm = TRUE)
+habit_agrupa <- 5  # A partir de 5 años los agrupa en una sola barra
+cortes <- c(seq(0, habit_agrupa, 1),max(datos$num_habitaciones))
+etiquetas <- c(seq(1,habit_agrupa,1),"Más")
+anyos <-  cut(datos$num_habitaciones, breaks = cortes, include.lowest = TRUE)
+ggplot(datos,
+       aes(x = anyos)) +
+  geom_bar(aes (y = ..count../sum(..count..)),
+           fill = "cornsilk1",
+           color = "cornsilk2",
+           stat = "count",
+           na.rm = FALSE ) +   # no produce ningún efecto aunque el manual diga lo contario
+  labs(x = "Nº de habitaciones", y = "%") +
+  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
+                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+            vjust = +0.5, size = 3, color = "cornsilk4")  +
+  theme_minimal() +
+  scale_x_discrete(labels = etiquetas)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+por aqui voy 19/08/2023
+####################   importe_de_la_renta     #####
+
+Resumen_basico(datos$importe_de_la_renta)
+
+datos %>% summarise(Media = mean(importe_de_la_renta, na.rm = TRUE),
+                    Desv.Típica = sqrt(var(importe_de_la_renta, na.rm = TRUE)),
+                    Moda = modeest::mfv(importe_de_la_renta)
+                    # Mínimo=min(importe_de_la_renta, na.rm = TRUE),
+                    # Q10 = quantile(importe_de_la_renta, 0.1, na.rm = TRUE),
+                    # Q20 = quantile(importe_de_la_renta, 0.2, na.rm = TRUE),
+                    # Q30 = quantile(importe_de_la_renta, 0.3, na.rm = TRUE),
+                    # Q40 = quantile(importe_de_la_renta, 0.4, na.rm = TRUE),
+                    # Q50 = quantile(importe_de_la_renta, 0.5, na.rm = TRUE),
+                    # Q60 = quantile(importe_de_la_renta, 0.6, na.rm = TRUE),
+                    # Q70 = quantile(importe_de_la_renta, 0.7, na.rm = TRUE),
+                    # Q80 = quantile(importe_de_la_renta, 0.8, na.rm = TRUE),
+                    # Q90 = quantile(importe_de_la_renta, 0.9, na.rm = TRUE),
+                    # Máximo = max(importe_de_la_renta, na.rm = TRUE)
+                    ) %>% 
+  pivot_longer(everything(),names_to = "Medida", values_to = "Valor") %>% 
+  flextable() %>% 
+  colformat_double(digits=1) %>% 
+  #fontsize(size=12,part="all") %>% 
+  autofit() %>% 
+  set_caption("Descripción de la variable")
+
+datos %>% summarise(#Media = mean(importe_de_la_renta, na.rm = TRUE),
+                    #Desv.Típica = sqrt(var(importe_de_la_renta, na.rm = TRUE)),
+                    #Mínimo=min(importe_de_la_renta, na.rm = TRUE),
+                    Q10 = quantile(importe_de_la_renta, 0.1, na.rm = TRUE),
+                    Q20 = quantile(importe_de_la_renta, 0.2, na.rm = TRUE),
+                    Q30 = quantile(importe_de_la_renta, 0.3, na.rm = TRUE),
+                    Q40 = quantile(importe_de_la_renta, 0.4, na.rm = TRUE),
+                    Q50 = quantile(importe_de_la_renta, 0.5, na.rm = TRUE),
+                    Q60 = quantile(importe_de_la_renta, 0.6, na.rm = TRUE),
+                    Q70 = quantile(importe_de_la_renta, 0.7, na.rm = TRUE),
+                    Q80 = quantile(importe_de_la_renta, 0.8, na.rm = TRUE),
+                    Q90 = quantile(importe_de_la_renta, 0.9, na.rm = TRUE),
+                    Máximo = max(importe_de_la_renta, na.rm = TRUE)
+) %>% 
+  #pivot_longer(everything(),names_to = "Medida", values_to = "Valor") %>% 
+  flextable() %>% 
+  colformat_double(digits=0) %>% 
+  #fontsize(size=12,part="all") %>% 
+  autofit() %>% 
+  set_caption("Descripción de la variable")
+
+
+Renta <-table(cut(datos$importe_de_la_renta,
+               breaks = c(seq(0, quantile["90%"]*1.5,50),max(datos$importe_de_la_renta, na.rm = TRUE)),
+               right = FALSE,    #Intervalos cerrados por la izquierda
+               include.lowest = TRUE,  # Para que incluya el valor máximo
+               dig.lab = 10))  #cerrados por la izquierda
+
+Renta %>% as.data.frame() %>% 
+  rename(Intervalo = Var1, Casos = Freq) %>%
+  flextable()
+
+
+ggplot(datos) +
+  geom_boxplot(aes(x="", y = importe_de_la_renta),
+               fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "", y = "Importe de la renta") +
+  theme_minimal()
+
+ggplot(datos) +
+  geom_boxplot(aes(x="", y = importe_de_la_renta),
+               fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "", y = "Importe de la renta") +
+  theme_minimal() +
+  coord_cartesian(ylim = c(0, 2000)) 
+
+ggplot(datos) +
+  geom_boxplot(aes(x="", y = importe_de_la_renta),
+               fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "", y = "Importe de la renta") +
+  theme_minimal() +
+  coord_cartesian(ylim = c(0, 1000)) 
+
+
+# ggplot(datos, aes(x = importe_de_la_renta)) +
+#   geom_histogram(aes(y = (..count..)/sum(..count..)), bins = 500, 
+#                  fill = "cornsilk1", color = "cornsilk2") +
+#   #geom_density(adjust = 1, color = "red") +
+#   labs(x = "Importe de la renta", y = "%", title = "Importe de la renta") +
+#   theme_minimal() +
+#   coord_cartesian(xlim = c(0, 2000)) +
+#   scale_y_continuous(labels = percent_format(scale = 100))
+# No me gusta porque no se contrala cuales son los extremos de los intervalos
+
+table(cut(datos$importe_de_la_renta,
+          breaks = c(seq(0, quantile["90%"]*1.5,50),Inf),
+          right = FALSE))  #cerrados por la izquierda
+
+
+
+valor_maximo <- max(hist(datos$importe_de_la_renta,
+                         breaks = seq(0, max(datos$importe_de_la_renta), 50), 
+                         plot = FALSE)$counts)
+
+grafico <-
+ggplot(datos, aes(x = importe_de_la_renta)) +
+  geom_histogram(breaks = seq(0,max(datos$importe_de_la_renta, rm.na = TRUE),50),
+                 closed = c("left"),   #importante, los intervalos cerrados por la izquierda
+                 fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Importe de la renta (€/mes)", y = "Casos") +
+  #tema_ams +
+  scale_x_continuous(breaks = seq(0, max(datos$importe_de_la_renta, na.rm = TRUE),5000))
+
+grafico
+quantile <- quantile(datos$importe_de_la_renta, prob = seq(0,1,0.1))
+names <- paste0("Q", seq(0,100,10))
+grafico + geom_vline(xintercept=quantile, color="lightsalmon3" )
+
+quantile <- quantile(datos$importe_de_la_renta, prob = seq(0,1,0.1))
+
+grafico <-
+ggplot(datos, aes(x = importe_de_la_renta)) +
+  geom_histogram(breaks = seq(0,max(datos$importe_de_la_renta, rm.na = TRUE),50),
+                 closed = c("left"),
+                 fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Importe de la renta (€/mes)", y = "Casos") +
+  #tema_ams +
+  coord_cartesian(xlim = c(0, quantile["90%"]*1.5)) +
+  scale_x_continuous(breaks = seq(0, max(datos$importe_de_la_renta, na.rm = TRUE),100))
+
+grafico
+
+
+# Añadimos los deciles
+grafico + geom_vline(xintercept=quantile, color="lightsalmon3" ) +
+  annotate("text",                        # Add text for mean
+           color="lightsalmon3",
+           x = quantile,
+           y = valor_maximo, #-500 -seq(0,1,0.1)*1000,
+           hjust =-0.1,
+           label = paste0(names,"\n",quantile) ,
+           family = "sans", size = 8/.pt
+  )
+
+
+
+
+# PAra indicar en el gráfico cuántos valores se quedan por debajo de la media
+# Obtengo la distribución empírica
+ecdf_func <- ecdf(datos$importe_de_la_renta)
+
+#y calculo el porcentaje de valores inferiores a la media
+# Calcular en qué rango de probabilidad cae el valor
+prob <- ecdf_func( mean(datos$importe_de_la_renta)) * 100
+prob <- round(prob, 1) # y lo redondeo
+
+# El tamaño de la fuente se expresa en mm
+# si queremos tamaño 12, indicamos 12/.pt
+# .pt = 2.845276, .pt es 0.35 mm
+
+grafico + geom_vline(xintercept=quantile["50%"], color="lightsalmon3" ) +
+  annotate("text",                        # Add text for mean
+           color="lightsalmon3",
+           x = quantile["50%"],
+           y = valor_maximo, #-500 -seq(0,1,0.1)*1000,
+           hjust = 1,
+           label = paste0("Mediana","\n",quantile["50%"]) ,
+           family = "sans", size = 8/.pt
+           ) +
+  geom_vline(xintercept=mean(datos$importe_de_la_renta), color="red" ) +
+  annotate("text",                        # Add text for mean
+           color="red",
+           x = mean(datos$importe_de_la_renta), 
+           y = valor_maximo, #-500 -seq(0,1,0.1)*1000,
+           hjust = -0.1,
+           vjust = 1,
+           label = paste0("Media","\n",
+                          sprintf("%.1f", mean(datos$importe_de_la_renta)),"\n",
+                          "Porc < Media: ", prob,"%") ,
+           family = "sans", size = 8/.pt
+  ) 
+
+
+
+
+# Expresado en porcentajes
+ggplot(datos, aes(x = importe_de_la_renta)) +
+  geom_histogram(breaks = seq(0,2000,50),closed = c("left"), aes(y = (..count..)/sum(..count..)),
+                 fill = "cornsilk1", color = "cornsilk2") +
+  labs(x = "Importe de la renta (€/mes)", y = "Casos") +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent_format(scale = 100))
+
+
+
+
+
+library(ggplot2)
+
+# Obtener todos los valores por defecto de los parámetros de temas
+valores_por_defecto <- theme_get()
+
+# Imprimir todos los valores por defecto
+print(valores_por_defecto)
+
+
+
+
+
+
+# Tipo de actualización #####
+Ver si se pueden agruapar valores o ver algo de valor en la variable
+
+# Importe de la fianza
+Hacer analisis de los casos en que la fianza es distinta a la renta para ver cuantos casos responden cambios en el contrato
+
+
 
 
 

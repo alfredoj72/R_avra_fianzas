@@ -1,4 +1,5 @@
-
+# Como elaborar y representar las tablas categoricas a partir del cruce de 
+# varias variables
 
 table(A,B)  # crea tabla de contingencia
 xtabs(count ~A + B)  # crea tablas contingencia más complejas
@@ -6,7 +7,7 @@ ftable() # crea la tabla de contingencia plana, es decir n
 
 prop.table() # añade proporciones
 
-gmodels::CrossTable(avra_catastro$sexo_arrendador, avra_catastro$sexo_arrendatario)
+gmodels::CrossTable(datos$sexo_arrendador, datos$sexo_arrendatario)
 
 
 
@@ -30,7 +31,7 @@ craterSize = cut(crateres$Diam_km,
 tabla_crateres = table(hemisphere, craterSize)
 
 #------------------------------------------------------------------------------
-
+borrar
 
 el porcentaje que representa un valor
 df_tt_2 <- df %>% group_by(Country) %>% 
@@ -53,7 +54,7 @@ df_tt_2 <- df %>% group_by(Country) %>%
 
 library(janitor)
 
-ues <- avra_catastro %>%
+ues <- datos %>%
   tabyl(sexo_arrendador)
 
 ues
@@ -64,11 +65,11 @@ ues %>%
 
 
 
-t1 <- avra_catastro %>%
+t1 <- datos %>%
   tabyl(sexo_arrendador, sexo_arrendatario) #, show_na = FALSE)
 t1
 
-t2 <- avra_catastro %>%
+t2 <- datos %>%
   tabyl(sexo_arrendador, sexo_arrendatario, show_na = FALSE)
 t2
 
@@ -84,7 +85,7 @@ t2 %>%
 
 
 #3 variables
-t3 <- avra_catastro %>%
+t3 <- datos %>%
   tabyl(sexo_arrendador,  provincia_806, sexo_arrendatario)
 
 # El resultado es un tabyl de ESCUELA x HTA, filtrado con una
@@ -92,7 +93,7 @@ t3 <- avra_catastro %>%
 t3
 
 
-avra_catastro %>%
+datos %>%
   tabyl(sexo_arrendador, sexo_arrendatario, provincia_806, show_na = FALSE) %>%
   adorn_totals("row") %>%
   adorn_percentages("all") %>%
@@ -101,7 +102,7 @@ avra_catastro %>%
   adorn_title     # añade el titulo de la variable en columnas
 
 
-avra_catastro %>%
+datos %>%
   tabyl(sexo_arrendador, provincia_806, show_na = FALSE) %>%
   adorn_totals(c("row", "col")) %>%
   adorn_percentages("col") %>% 
@@ -114,7 +115,7 @@ avra_catastro %>%
  library(flextable)
 library(tidyverse)
 
-TABLA <- avra_catastro %>% 
+TABLA <- datos %>% 
   tabyl(sexo_arrendador, provincia_806, show_na = FALSE) %>%
   #mutate(sexo_arrendador=factor(sexo_arrendador)) %>% 
   adorn_percentages("all") %>% 
@@ -131,7 +132,7 @@ TABLA  %>%
 
 
 # esto es un grafico
-avra_catastro %>%
+datos %>%
   tabyl(sexo_arrendador, provincia_806, show_na = FALSE) %>%
   adorn_percentages("col") %>% 
   pivot_longer(cols =-1, names_to = "provincia_806", values_to = "proporcion") %>% 
@@ -186,7 +187,7 @@ Relacion_ARRU %>%
   add_header_lines(values = rev(table_caption)) %>%
   bold(part = "header", i = 1) %>%
   italic(part = "header", i = c(2:length(table_caption))) %>%
-  align(part = "header", i = c(1:length(table_caption)), align = "left") %>%
+  align(part = "header", i = c(1:length(table_caption)), align = "rigth") %>%
   border(part = "head", i = c(1:length(table_caption)),
          border = list("width" = 0, color = "black", style = "solid"))
 

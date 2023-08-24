@@ -13,8 +13,9 @@ rm(paq, paquetes_necesarios)
 
 
 rm(list =ls())
-load("datos3.RData")
-
+#load("datos3.RData")
+load(file = "./datos_output/datos_para_analisis_2022.RData")
+Fianzas_viviendas <- datos_para_analisis_2022[[1]]
 # Fianzas_viviendas$x <- Fianzas_viviendas$coorx_25830
 # Fianzas_viviendas$y <- Fianzas_viviendas$coory_25830
 # 
@@ -94,7 +95,7 @@ datos_entrada <- Fianzas_viviendas
 # datos_entrada <- Fianzas_viviendas %>% filter(cod_ine == "11012")
 # datos_entrada <- Fianzas_viviendas %>% filter(grepl("^04\\d{3}", cod_ine))
 
-num_cortes = 125
+cortes = 125
 
 ###########################################################################
 
@@ -106,7 +107,7 @@ num_cortes = 125
 # capa_mia <- calcula_mapa_calor(datos = datos_entrada, num_cortes = 25)
 # plot(capa_mia)
 
-mapa_andalucia <- calcula_mapa_calor(datos = datos_entrada, num_cortes = 125)
+mapa_andalucia <- calcula_mapa_calor(datos = datos_entrada, num_cortes = cortes)
 #plot(mapa_andalucia)
 
 
@@ -298,7 +299,7 @@ ggsave(filename="./coords.png")
 #######################################################################
 # Hacer el mapa de otra forma
 # library("leaflet")            # Librería para crear mapas interactivos
-# library("data.table")         # Librería para trabajar con datos tipo 'data.table'
+ library("data.table")         # Librería para trabajar con datos tipo 'data.table'
 # library("sp")                 # Librería para datos espaciales
 # library("rgdal")              # Librería para leer y escribir datos espaciales en diferentes formatos
 # library("KernSmooth")         # Librería para métodos de suavizado de kernel
