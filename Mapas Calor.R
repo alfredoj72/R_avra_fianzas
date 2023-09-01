@@ -370,22 +370,8 @@ capa_puntos_con_campo <- st_join(capa_puntos, capa_poligonos_seleccionados)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Mirar las posibilidades de ggdensity 
+# https://jamesotto852.github.io/ggdensity/
 
 
 

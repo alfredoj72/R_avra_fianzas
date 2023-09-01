@@ -1,3 +1,7 @@
+#dAR UN BUEN REPASO A https://epirhandbook.com/es/descriptive-tables.html 
+# Hasta ahora en creado las tablas haciendo el resumen con dataframe y pasando
+# a flextable.
+
 # Como elaborar y representar las tablas categoricas a partir del cruce de 
 # varias variables
 
@@ -12,42 +16,6 @@ gmodels::CrossTable(datos$sexo_arrendador, datos$sexo_arrendatario)
 
 
 
-#------------------------------------------------------------------------------
-
-#Obtener tablas de contingencia a partir de la reclasificación
-#de variables continuas.
-
-x <- c(12, 1, 25, 12, 65, 2, 6, 17)
-x_agrupada <- cut(x, breaks = c(0, 3, 12, 15, 20, 80),
-                  labels = c("Primero", "Segundo", "Tercero", "Cuarto", "Quinto"))
-#por def el intervalo es cerrado por la derecha ( right = TRUE),
-#con right = FALSE sera cerrado por la izquierda y abierto por la derecha
-
-hemisphere = cut(crateres$Lat, breaks=c(-90, 0, 90))
-head(hemisphere)
-craterSize = cut(crateres$Diam_km,
-                 breaks=c(seq(20, 80, 20), max(crateres$Diam_km)),
-                 include.lowest=TRUE)
-tabla_crateres = table(hemisphere, craterSize)
-
-#------------------------------------------------------------------------------
-borrar
-
-el porcentaje que representa un valor
-df_tt_2 <- df %>% group_by(Country) %>% 
-  summarise(NN = n(), percent = n()/nrow(.) )
-
-otra forma el porcentaje que representa un valor
-df_tt_2 <- df %>% group_by(Country) %>%
-  summarise (NN = n()) %>%
-  mutate(percent = NN / sum(NN))
-
-yo queria meter el q1 y q3
-sería
-df_tt_2 <- df %>% group_by(Country) %>% 
-  summarise(NN = n(), q1= quantile(., 0.25), q3=quantile(.,0.75))
-
-#------------------------------------------------------------------------------
 
 # https://rstudio-pubs-static.s3.amazonaws.com/747687_9703955da60144c8b950014c3b020be7.html
 # Voy a probar con tabyl de janitor
@@ -187,51 +155,12 @@ Relacion_ARRU %>%
   add_header_lines(values = rev(table_caption)) %>%
   bold(part = "header", i = 1) %>%
   italic(part = "header", i = c(2:length(table_caption))) %>%
-  align(part = "header", i = c(1:length(table_caption)), align = "rigth") %>%
-  border(part = "head", i = c(1:length(table_caption)),
+  align(part = "header", i = c(1:length(table_caption)), align = "right") %>%
+  border(part = "header", i = c(1:length(table_caption)),
          border = list("width" = 0, color = "black", style = "solid"))
 
 
 #------------------------------------------------------------------------------
 
-#dAR UN BUEN REPASO A https://epirhandbook.com/es/descriptive-tables.html 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#------------------------------------------------------------------------------

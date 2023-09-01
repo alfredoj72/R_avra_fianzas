@@ -10,7 +10,7 @@ rm(list = ls())
 
 # paquetes y directorio de trabajo ----
 #instala y carga los paquetes necesarios
-paquetes_necesarios = c("readxl","RPostgres","sf","dplyr","writexl") # c( "ggplot2","classInt") 
+paquetes_necesarios = c("readxl","RPostgres","sf","tidyverse","writexl","glue") # c( "ggplot2","classInt") 
 for (paq in paquetes_necesarios){
   if (!(paq %in% rownames(installed.packages()))){
     install.packages(paq, dependencies = T)}
@@ -30,28 +30,32 @@ source("Funciones.R")
 
 #########################################################################
 # ejecutar un año
-avra_2022 <- avra2018_2022 %>% 
-  filter(as.character(format(avra2018_2022$FECHA_DEVENGO, "%Y")) == 2022)
+# avra_2022 <- avra2018_2022 %>%
+#   filter(as.character(format(avra2018_2022$FECHA_DEVENGO, "%Y")) == "2022")
+# #
+# # # Añade la información del catastro a cada vivienda del registro de fianzas
+#  avra_catastro_2022 <- añade_campos_catastro(avra_2022)
+# 
+# # Salva en el directorio datos_output la información en y xlsx
+# salva_tablas_avra_catastro(avra_catastro_2022)
+# # Salva en el directorio datos_output la información en .Rdata
+# save(avra_catastro_2022, file = "./datos_output/avra_catastro_2022.RData")
+# 
+# # Prepara para el análisis, solo con la tabla de vivendas del registro con
+# # los datos del catastro conectados, genera campos calculados, FILTRA los registros
+# # válidos para el análisis, añade campos de POTA y secciones censales y crea factores
+# datos_para_analisis_2022 <- preparacion_datos(avra_catastro_2022)
+# 
+# # Salva en el dirctorio datos_output la información
+# # Salva en el dirctorio datos_output la información
+# save(datos_para_analisis_2022,
+#      file = "./datos_output/datos_para_analisis_2022.RData")
+# write_xlsx(datos_para_analisis_2022[[1]],
+#            glue("./datos_output/avra_catastro_2022_8_datos_para_analisis.xlsx"))
+# write_xlsx(datos_para_analisis_2022[[2]],
+#            glue("./datos_output/avra_catastro_2022_8b_resumen_del_filtrado.xlsx"))
 
-# Añade la información del catastro a cada vivienda del registro de fianzas
-avra_catastro_2022 <- añade_campos_catastro(avra_2022)
 
-# Salva en el directorio datos_output la información en y xlsx
-salva_tablas_avra_catastro(avra_catastro_2022)
-# Salva en el directorio datos_output la información en .Rdata
-save(avra_catastro_2022, file = "./datos_output/avra_catastro_2022.RData")
-
-# Prepara para el análisis, solo con la tabla de vivendas del registro con
-# los datos del catastro conectados, genera campos calculados, FILTRA los registros
-# válidos para el análisis, añade campos de POTA y secciones censales y crea factores
-datos_para_analisis_2022 <- preparacion_datos(avra_catastro_2022)
-
-# Salva en el dirctorio datos_output la información
-save(datos_para_analisis_2022, file = "./datos_output/datos_para_analisis_2022.RData")
-write_xlsx(datos_para_analisis_2022[[1]], 
-           "./datos_output/_8_datos_para_analisis_2022.xlsx")
-write_xlsx(datos_para_analisis_2022[[2]], 
-           "./datos_output/_8b_resumen_del_filtrado.xlsx")
 
 #load("avra_catastro_2018.Rdata")
 # #########################################################################
@@ -77,26 +81,58 @@ write_xlsx(datos_para_analisis_2022[[2]],
 
  
 # #########################################################################
+## Función que hace el proceso completo 
+# Parte de los datos ya leidos y genera el conjunto de tablas
+
+proceso_completo <- function(anyo_sel) {
+avra_anyo <- avra2018_2022 %>% 
+  filter(as.character(format(avra2018_2022$FECHA_DEVENGO, "%Y")) == anyo_sel)
+
+# Añade la información del catastro a cada vivienda del registro de fianzas
+avra_catastro_anyo <- añade_campos_catastro(avra_anyo)
+
+# Salva en el directorio datos_output la información en y xlsx
+salva_tablas_avra_catastro_alt(avra_catastro_anyo, anyo_sel)
+
+# Salva en el directorio datos_output la información en .Rdata
+nombre_df <- glue("avra_catastro_{anyo_sel}")
+assign(nombre_df, avra_catastro_anyo )
+save(list = nombre_df, file = glue("./datos_output/avra_catastro_{anyo_sel}.RData"))
+
+# Prepara para el análisis, solo con la tabla de vivendas del registro con
+# los datos del catastro conectados, genera campos calculados, FILTRA los registros
+# válidos para el análisis, añade campos de POTA y secciones censales y crea factores
+datos_para_analisis_anyo <- preparacion_datos(avra_catastro_anyo)
+
+# Salva en el directorio datos_output la información
+nombre_df <- glue("datos_para_analisis_{anyo_sel}")
+assign(nombre_df, datos_para_analisis_anyo )
+save(list = nombre_df, file = glue("./datos_output/datos_para_analisis_{anyo_sel}.RData"))
+
+write_xlsx(datos_para_analisis_anyo[[1]], 
+            glue("./datos_output/avra_catastro_{anyo_sel}_8_datos_para_analisis.xlsx"))
+write_xlsx(datos_para_analisis_anyo[[2]], 
+           glue("./datos_output/avra_catastro_{anyo_sel}_8b_resumen_del_filtrado.xlsx"))
+
+
+#Lee los dataframes construidos
+# load(file = glue("./datos_output/avra_catastro_{anyo_sel}.RData"))
+# load(file = glue("./datos_output/datos_para_analisis_{anyo_sel}.RData"))
+}
+
+################################################################################
+# Ejecutar un año elegido en una variable
+anyo <- "2022"
+proceso_completo(anyo)
+
+
+################################################################################
 # # ejecutar varios años en una lista
-# # la cosa se complica al intentar guardar los excel mejor hacer 1 a 1
-# # probar con {{x}}
-# avra2018_2022 <- avra2018_2022 %>% 
-#     filter(as.character(format(avra2018_2022$FECHA_DEVENGO, "%Y")) == 2019) %>% 
-#     filter(CODIGO_INE == "41102")
-# 
-# lista_tablas_avra <- split(avra2018_2022,
-#                      paste0("avra_", as.character(format(avra2018_2022$FECHA_DEVENGO, "%Y"))))
-# 
-# lista_tablas_avra <- lista_tablas_avra[1]
-# #lo siguiente es lo que genera nombres de tablas raros
-# lista_avra_catastro <- lapply(lista_tablas_avra, añade_campos_catastro)
-# 
-# lapply(lista_avra_catastro, salva_tablas_avra_catastro)
-
-
-
-
-
+for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
+ proceso_completo (anyo_sel)
+ #print(anyo_sel)
+}
+  
 
 # Nota a meter en algun sitio
 # La superficie asignada a cada vivienda por el resumen de datos IECA Catastro

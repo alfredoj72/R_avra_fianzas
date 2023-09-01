@@ -3,3 +3,6 @@
 .RData
 .Ruserdata
 /capas_in
+/datos_input
+/datos_aux
+*.db

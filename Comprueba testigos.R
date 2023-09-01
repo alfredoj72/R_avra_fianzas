@@ -1,3 +1,5 @@
+# Este codigo se ha quedado obsoleto al elaborar GeneraSalidaBADEA
+
 # Calculo de resumenes para comprobar los elementos que cumplen la condición del
 # número mínimo de testigos para ser publicados.
 
