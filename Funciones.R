@@ -1342,9 +1342,10 @@ preparacion_datos <- function(datos_entrada){
   Secciones_sf <- st_read(dsn = "datos_aux/13_27_SeccionCensal.shp", quiet = TRUE)
   
   Barrios_sf <- Barrios_sf %>% 
-    mutate(barrio.nombre = nombre,
+    mutate(barrio.codigo = paste(cod_mun, nombre),
+           barrio.nombre = nombre,
            barrio.distrito = distrito) %>% 
-    select(barrio.nombre, barrio.distrito)
+    select(barrio.codigo,barrio.nombre, barrio.distrito)
   
   Secciones_sf <- Secciones_sf %>% 
     mutate(seccion.codigo = codigo,
@@ -1354,38 +1355,348 @@ preparacion_datos <- function(datos_entrada){
   datos <- st_join(datos, Barrios_sf)
   datos <- st_join(datos, Secciones_sf)
   
-  listado_barrios <- unique(Barrios_sf$barrio.nombre)
-  listado_barrios_distrito <- unique(Barrios_sf$barrio.distrito)
-  listado_secciones <- unique(Secciones_sf$seccion.codigo)
-  listado_secciones_distrito <- unique(Secciones_sf$seccion.distrito)
+  # datos <- datos %>% 
+  #   mutate( barrio.codigo = factor(barrio.codigo),
+  #           barrio.nombre = factor(barrio.nombre),
+  #           barrio.distrito = factor(barrio.distrito),
+  #           seccion.codigo = factor(seccion.codigo),
+  #           seccion.distrito = factor(seccion.distrito))
+  
+  rm(Barrios_sf, Secciones_sf)
+  
+# definición de factores
+
+  ######## DEFINICION DE FACTORES ############
+  #
+  
+  # Si convierto los NA en un nivel del factor comenzará a ordenarse como el resto
+  # de los niveles, si lo dejo como NA se van siempre al último de la lista.
+  
+  # datos <- datos %>%
+  #   mutate (tipo_persona_arrendador = as.character(tipo_persona_arrendador),
+  #           sexo_arrendador = as.character(sexo_arrendador))
+  
+  # Para obtener los resultados de datos para BADEA es preciso contar con todos
+  # los municipios, todas las secciones censales y todos los distritos censales
+  # Para ello voy a definir los factores con todos ellos y así podré obtenerlos
+  # en los resultados aunque no tengan datos asociados
+  # Los factores de secciones censales, distritos censales, unidades POTA y barrios
+  # lo hago en la función preparacion_datos al tiempo que añado la información.
+  # El factor de los municipios lo hago aqui
+  
+  # Leo los municipios de la capa de municipios de datos_aux. En los script de 
+  # creación de mapas leo los datos de WMF. Aquí lo hago distinto.
+  
+  
+  Municipios_sf <- st_read(dsn = "datos_aux/13_01_TerminoMunicipal.shp", quiet = TRUE)
+  Municipios <- st_drop_geometry(Municipios_sf) %>% 
+    select(cod_mun, nombre) %>% 
+    distinct(cod_mun, nombre)
   
   datos <- datos %>% 
-    mutate( barrio.nombre = factor(barrio.nombre, levels = listado_barrios),
-            barrio.distrito = factor(barrio.distrito, levels = listado_barrios_distrito),
-            seccion.codigo = factor(seccion.codigo, levels = listado_secciones),
-            seccion.distrito = factor(seccion.distrito, levels = listado_secciones_distrito))
+    mutate(cod_ine = factor(cod_ine,
+                            levels = Municipios$cod_mun, 
+                            labels = Municipios$nombre)
+    )
+  rm(Municipios_sf, Municipios)
   
-  rm(Barrios_sf, Secciones_sf, listado_barrios, listado_barrios_distrito,
-     listado_secciones, listado_secciones_distrito)
+  datos <- datos %>%
+    #mutate (tipo_persona_arrendador = replace_na(tipo_persona_arrendador,"NEspec")) %>% # no hay casos
+    mutate (tipo_persona_arrendador = factor(tipo_persona_arrendador, 
+                                             levels = c("F", "J"), 
+                                             labels = c("Física", "Jurídica")),
+            tipo_entidad_arrendador = as.factor(tipo_entidad_arrendador),
+            sexo_arrendador = factor(sexo_arrendador,
+                                     levels = c("M", "V"),
+                                     labels = c("Mujeres", "Hombres")),
+            sexo_arrendatario = factor(sexo_arrendatario,
+                                       levels = c("M", "V"),
+                                       labels = c("Mujeres", "Hombres")),
+            nacionalidad_arrendatario = factor(nacionalidad_arrendatario),
+            tipo_de_arrendamiento = case_when(     #otra forma podría ser usando na_if()
+              tipo_de_arrendamiento == "AMUEBLADO"       ~ "Amueblado", 
+              tipo_de_arrendamiento == "SIN AMUEBLAR"    ~ "Sin Amueblar",
+              TRUE                                 ~ NA_character_) , 
+            tipo_de_arrendamiento = factor(tipo_de_arrendamiento),
+            provincia_806 = factor (provincia_806, 
+                                    labels = c("Almería", "Cádiz","Córdoba","Granada","Huelva","Jaén","Málaga","Sevilla"))
+    )
+  
+  datos <- datos %>%
+    mutate (  tipo_de_arrendamiento = case_when(     #otra forma podría ser usando na_if()
+      tipo_de_arrendamiento == "AMUEBLADO"       ~ "Amueblado", 
+      tipo_de_arrendamiento == "SIN AMUEBLAR"    ~ "Sin Amueblar",
+      TRUE                                 ~ NA_character_) , 
+      tipo_de_arrendamiento = factor(tipo_de_arrendamiento))
+  
+  
+  anyos <-cut(datos$duracion_contrato_años,
+              breaks = c(0,1,3,5,max(datos$duracion_contrato_años, na.rm = TRUE)),
+              right = TRUE,    #Intervalos cerrados por la derecha
+              include.lowest = TRUE,  # Para que incluya el valor máximo
+              dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
+  
+  etiquetas <- c("1 año",">1 - 3 años",">3 - 5 años",">5 años")
+  
+  datos <- datos %>% mutate(f.durac_contrato = factor(anyos, labels =etiquetas))
+  
+  
+  #max <- max(datos$num_habitaciones,  na.rm = TRUE)
+  habit_agrupa <- 4  # A partir de 4 habitaciones los agrupa en una sola barra
+  cortes <- c(seq(0, habit_agrupa, 1),max(datos$num_habitaciones, na.rm = T))
+  etiquetas <- c(seq(1,habit_agrupa,1),glue("{habit_agrupa+1} o más"))
+  n_hab <-  cut(datos$num_habitaciones, 
+                breaks = cortes,
+                rigth = TRUE,
+                include.lowest = TRUE)
+  
+  datos <- datos %>% mutate(f.hab = factor(n_hab, labels =etiquetas))
+  
+  
+  rentas <-cut(datos$importe_de_la_renta,
+               breaks = c(0,300,500,700,900,1200,max(datos$importe_de_la_renta, na.rm = TRUE)),
+               right = FALSE,    #Intervalos cerrados por la izquierda
+               include.lowest = TRUE,  # Para que incluya el valor máximo
+               dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
+  
+  etiquetas <- c("<300€","300€ - 499€","500€ - 699€",
+                 "700€ - 899€","900€ - 1.199€",">=1.200€")
+  
+  datos <- datos %>% mutate(f.renta_alq = factor(rentas, labels =etiquetas))
+
+######## DEFINICION DE FACTORES ############
+# FACTORES CORRESPONDIENTES A CAMPOS DE LA TABLA ORIGINAL DE DATOS DE AVRA
+
+# Si convierto los NA en un nivel del factor comenzará a ordenarse como el resto
+# de los niveles, si lo dejo como NA se van siempre al último de la lista.
+
+# datos <- datos %>%
+#   mutate (tipo_persona_arrendador = as.character(tipo_persona_arrendador),
+#           sexo_arrendador = as.character(sexo_arrendador))
+
+# Para obtener los resultados de datos para BADEA es preciso contar con todos
+# los municipios, todas las secciones censales y todos los distritos censales
+# Para ello voy a definir los factores con todos ellos y así podré obtenerlos
+# en los resultados aunque no tengan datos asociados
+# Los factores de secciones censales, distritos censales, unidades POTA y barrios
+# lo hago en la función preparacion_datos al tiempo que añado la información.
+# El factor de los municipios lo hago aqui
+
+# Leo los municipios de la capa de municipios de datos_aux. En los script de 
+# creación de mapas leo los datos de WMF. Aquí lo hago distinto.
+  
+  
+  Municipios_sf <- st_read(dsn = "datos_aux/13_01_TerminoMunicipal.shp", quiet = TRUE)
+  Municipios <- st_drop_geometry(Municipios_sf) %>% 
+    select(cod_mun, nombre) %>% 
+    distinct(cod_mun, nombre)
+  
+  datos <- datos %>% 
+    mutate(cod_ine = factor(cod_ine,
+                            levels = Municipios$cod_mun, 
+                            labels = Municipios$nombre)
+    )
+  rm(Municipios_sf, Municipios)
+  
+  datos <- datos %>%
+    #mutate (tipo_persona_arrendador = replace_na(tipo_persona_arrendador,"NEspec")) %>% # no hay casos
+    mutate (tipo_persona_arrendador = factor(tipo_persona_arrendador, 
+                                             levels = c("F", "J"), 
+                                             labels = c("Física", "Jurídica")),
+            tipo_entidad_arrendador = as.factor(tipo_entidad_arrendador),
+            sexo_arrendador = factor(sexo_arrendador,
+                                     levels = c("M", "V"),
+                                     labels = c("Mujeres", "Hombres")),
+            sexo_arrendatario = factor(sexo_arrendatario,
+                                       levels = c("M", "V"),
+                                       labels = c("Mujeres", "Hombres")),
+            nacionalidad_arrendatario = factor(nacionalidad_arrendatario),
+            tipo_de_arrendamiento = case_when(     #otra forma podría ser usando na_if()
+              tipo_de_arrendamiento == "AMUEBLADO"       ~ "Amueblado", 
+              tipo_de_arrendamiento == "SIN AMUEBLAR"    ~ "Sin Amueblar",
+              TRUE                                 ~ NA_character_) , 
+            tipo_de_arrendamiento = factor(tipo_de_arrendamiento),
+            provincia_806 = factor (provincia_806, 
+                                    labels = c("Almería", "Cádiz","Córdoba","Granada","Huelva","Jaén","Málaga","Sevilla"))
+    )
+  
+  datos <- datos %>%
+    mutate (  tipo_de_arrendamiento = case_when(     #otra forma podría ser usando na_if()
+      tipo_de_arrendamiento == "AMUEBLADO"       ~ "Amueblado", 
+      tipo_de_arrendamiento == "SIN AMUEBLAR"    ~ "Sin Amueblar",
+      TRUE                                 ~ NA_character_) , 
+      tipo_de_arrendamiento = factor(tipo_de_arrendamiento))
+  
+  
+  anyos <-cut(datos$duracion_contrato_años,
+              breaks = c(0,1,3,5,max(datos$duracion_contrato_años, na.rm = TRUE)),
+              right = TRUE,    #Intervalos cerrados por la derecha
+              include.lowest = TRUE,  # Para que incluya el valor máximo
+              dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
+  
+  etiquetas <- c("1 año",">1 - 3 años",">3 - 5 años",">5 años")
+  
+  datos <- datos %>% mutate(f.durac_contrato = factor(anyos, labels =etiquetas))
+  
+  
+  #max <- max(datos$num_habitaciones,  na.rm = TRUE)
+  habit_agrupa <- 4  # A partir de 4 habitaciones los agrupa en una sola barra
+  cortes <- c(seq(0, habit_agrupa, 1),max(datos$num_habitaciones, na.rm = T))
+  etiquetas <- c(seq(1,habit_agrupa,1),glue("{habit_agrupa+1} o más"))
+  n_hab <-  cut(datos$num_habitaciones, 
+                breaks = cortes,
+                rigth = TRUE,
+                include.lowest = TRUE)
+  
+  datos <- datos %>% mutate(f.hab = factor(n_hab, labels =etiquetas))
+  
+  
+  rentas <-cut(datos$importe_de_la_renta,
+               breaks = c(0,300,500,700,900,1200,max(datos$importe_de_la_renta, na.rm = TRUE)),
+               right = FALSE,    #Intervalos cerrados por la izquierda
+               include.lowest = TRUE,  # Para que incluya el valor máximo
+               dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
+  
+  etiquetas <- c("<300€","300€ - 499€","500€ - 699€",
+                 "700€ - 899€","900€ - 1.199€",">=1.200€")
+  
+  datos <- datos %>% mutate(f.renta_alq = factor(rentas, labels =etiquetas))
+  
+######## DEFINICION DE FACTORES ############
+# FACTORES CORRESPONDIENTES A CAMPOS AÑADIDOS A LA TABLA ORIGINAL DE DATOS DE AVRA
+  
+  superf <-cut(datos$stotalocal_14,
+               breaks = c(min(datos$stotalocal_14, na.rm = TRUE),
+                          45,65,85,105,150,max(datos$stotalocal_14, na.rm = TRUE)),
+               right = FALSE,    #Intervalos cerrados por la izquierda
+               include.lowest = TRUE,  # Para que incluya el valor máximo
+               dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
+  
+  etiquetas <- c("Hasta 45","45 - <65","65 - <85",
+                 "85 - <105","105 - <150","150 o más")
+  
+  datos <- datos %>% mutate(f.super = factor(superf, labels =etiquetas))
+  
+  
+  renta_aux <-cut(datos$renta_m2,
+                  breaks = c(min(datos$renta_m2, na.rm = TRUE),
+                             2,4,6,8,10,max(datos$renta_m2, na.rm = TRUE)),
+                  right = FALSE,    #Intervalos cerrados por la izquierda
+                  include.lowest = TRUE,  # Para que incluya el valor máximo
+                  dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
+  
+  etiquetas <- c("Menos 2","2 a menos de 4","4 a menos de 6",
+                 "6 a menos de 8","8 a menos de 10","10 o más")
+  
+  datos <- datos %>% mutate(f.renta_m2 = factor(renta_aux, labels =etiquetas))
+  
+  
+  antig <-cut(datos$a_ant_bim,
+              breaks = c(min(datos$a_ant_bim, na.rm = TRUE),
+                         1960,1970,1980,1990,2000,2010,
+                         max(datos$a_ant_bim, na.rm = TRUE)),
+              right = FALSE,    #Intervalos cerrados por la izquierda
+              include.lowest = TRUE,  # Para que incluya el valor máximo
+              dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
+  
+  etiquetas <- c("Antes 1960","1960 - <1970","1970 - <1980",
+                 "1980 - <1990","1990 - <2000","2000 - <2010", "Desde 2010")
+  
+  datos <- datos %>% mutate(f.antig_bi = factor(antig, labels =etiquetas))
   
   
   
   
+  datos <- datos %>%
+    mutate(f.tipolog = case_when(substr(tip_const4d_14, 1, 3) == "011"  ~ "Plurifamiliar",
+                                 substr(tip_const4d_14, 1, 3) %in% c("012","013") ~ "Unifamiliar"),
+           f.tipolog = factor(f.tipolog))
   
   
   
+  antig <-cut(datos$a_ant_bim,
+              breaks = c(min(datos$a_ant_bim, na.rm = TRUE),
+                         1960,1970,1980,1990,2000,2010,
+                         max(datos$a_ant_bim, na.rm = TRUE)),
+              right = TRUE,    #Intervalos cerrados por la izquierda
+              include.lowest = TRUE,  # Para que incluya el valor máximo
+              dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
+  
+  etiquetas <- c("Hasta 1960","1961 - 1970","1971 - 1980",
+                 "1981 - 1990","1991 - 2000","2001 - 2010", "Desde 2011")
+  
+  datos <- datos %>% mutate(f.antig_bi = factor(antig, labels =etiquetas))
+  
+  ####
+  datos_poblacion_2022 <- read.csv("datos_aux/datos_poblacion_2022.txt", 
+                                   header= TRUE,
+                                   sep = ";",
+                                   colClasses = "character")
+  
+  datos_poblacion_2022$Valor = as.numeric(datos_poblacion_2022$Valor)
+  
+  pob_aux <- cut(datos_poblacion_2022$Valor,
+                 breaks = c(min(datos_poblacion_2022$Valor),
+                            5000,10000,20000,50000,100000,500000,
+                            max(datos_poblacion_2022$Valor)),
+                 right = FALSE,
+                 include.lowest = TRUE,
+                 dig.lab = 10)
+  
+  Etiquetas <- c("Menos de 5.000","5.000 - <10.000","10.000 - <20.000",
+                 "20.000 - <50.000", "50.000 - <100.000", "100.000 - <500.000",
+                 "500000 o más")
+  
+  datos_poblacion_2022 <- datos_poblacion_2022 %>% 
+    mutate(f.tam_pob = factor(pob_aux, labels = Etiquetas)) %>% 
+    select(CODIGO_INE3, f.tam_pob)
+  
+  datos <-  left_join(datos, 
+                      datos_poblacion_2022, 
+                      by = c("cod_ine" = "CODIGO_INE3") )
+  
+  #######
+  
+  
+  datos <- datos %>% 
+    mutate(pota.jerarquia = factor(pota.jerarquia,
+                                   levels = c("Ciudad principal","Ciudad media 1", "Ciudad media 2",
+                                              "Centro rural o pequeña ciudad 1", "Centro rural o pequeña ciudad 2",
+                                              "Asentamiento cabecera municipal")))
+  
+  
+  #   Constructo de Persona Física + Tipo Persona Jurídica 
+  
+  datos <- datos %>% 
+    mutate(f.persona_fj = ifelse(
+      tipo_persona_arrendador == "F", "Persona Física",as.character(tipo_entidad_arrendador)),
+      f.persona_fj = factor(f.persona_fj, levels = c("Persona Física", 
+                                                     unique(as.character(tipo_entidad_arrendador))))
+    )
+  
+  
+  datos <- datos %>%  mutate(calidad = substr(categoria_const_14,5,5))
+  datos <- datos %>% 
+    mutate(calidad = factor(calidad,
+                            levels = c("A","B","C",as.character(seq(1,9,1)))))
+  
+  datos <- datos %>% 
+    mutate(h2o = ifelse(is.na(h2o),0,h2o),
+           h2o = factor(h2o, levels = c(0,1), labels = c("Sin", "Con")))
   
   
   
+  datos <- datos %>% 
+    mutate(ea = ifelse(is.na(ea),0,ea),
+           ea = factor(ea, levels = c(0,1), labels = c("Sin", "Con")))
+  
+  datos <- datos %>% 
+    mutate(app = ifelse(is.na(app),0,app),
+           app = factor(app, levels = c(0,1), labels = c("Sí", "N")))
   
   
   
-  
-  
-  # FALTA SUSTITUIR NA POR VALORES Y DAR ORDEN A LOS FACTORES
-  #Declaro cuáles son los factores. OJO FALTAN ALGUNOS AUN
-  
-  
+  # FIN DE DEFINICION DE FACTORES
   
   
   
@@ -1414,5 +1725,257 @@ preparacion_datos <- function(datos_entrada){
               tabla_borrados = tabla_borrados,
               originales = originales))
   
+}
+
+
+############### FUNCION CARGAR CAPAS Y AÑADIR CAMPOS  ########################
+
+crea_capas_y_campos <- function(){
+  # Cargar las capas y añadir datos   
+  
+  # # Carga de capas servidas a través de servicios WFS
+  # # Especifica la URL del servicio WFS
+  # tipo <- "WFS"
+  # url_wfs <- "http://www.ideandalucia.es/services/DERA_g13_limites_administrativos/wfs?"
+  # peticion <- "request=GetCapabilities"
+  # orden <- paste(tipo,":",url_wfs,peticion, sep = "")
+  # 
+  # # Obtén la lista de capas disponibles en el WFS
+  # capas_disponibles <- st_layers(orden)
+  # 
+  # # Muestra la lista de capas
+  # print(capas_disponibles["name"])
+  # 
+  # # # Añadir las capas indicando el nombre completo
+  # # name_capa <- "DERA_g13_limites_administrativos:g13_01_Provincia"
+  # # provincia_sf <- st_read(dsn = orden, layer = name_capa)
+  # #
+  # # name_capa <- "DERA_g13_limites_administrativos:g13_01_TerminoMunicipal"
+  # # municipio_sf <- st_read(dsn = orden, layer = name_capa)
+  # 
+  # # Añadir las capas buscando texto dentro de su nombre
+  # # type = 6 devuelve geometría de tipo MULTIPOLYGON
+  # lista_capas <- capas_disponibles[[1]]
+  # name <- lista_capas[grepl("Provincia", lista_capas)]
+  # provincia_sf <- st_read(dsn = orden, layer = name, type = 6)
+  # 
+  # name <- lista_capas[grepl("Municipal", lista_capas)]
+  # municipio_sf <- st_read(dsn = orden, layer = name, type = 6)
+  # 
+  # name <- lista_capas[grepl("UnidadPOTA", lista_capas)]
+  # POTA_sf <- st_read(dsn = orden, layer = name, type = 6)
+  
+
+  # Leer capas en formato shapefiles 
+  # ## Carga de capas shp ubicadas en directorio local
+  provincia_sf <- st_read(dsn = "./capas_in/13_01_Provincia.shp", quiet = TRUE)
+  
+  municipio_sf <- st_read(dsn = "./capas_in/13_01_TerminoMunicipal.shp", quiet = TRUE)
+  barrios_sf <- st_read(dsn = "capas_in/13_24_BarrioUrbano.shp", quiet = TRUE)
+  secciones_sf <- st_read(dsn = "capas_in/13_27_SeccionCensal.shp", quiet = TRUE)
+  
+  secciones_sf <- secciones_sf %>% mutate(distrito = substr(codigo,1,7) )
+  
+  # añado un campo identificador a la capa de barrios que no lo tiene
+  barrios_sf$barrio.codigo <- paste(barrios_sf$cod_mun, barrios_sf$nombre)
+  
+  # hago un "dissolve" de barrios atendiendo al distrito
+  # y añado cod_mun y municipio para que la capa resultado contenga dichos campos
+  barrios_union_sf <- barrios_sf %>% 
+           group_by(distrito, cod_mun, municipio) %>%
+           summarize(.groups = "drop") 
+  
+  distritos_sf <- secciones_sf %>%
+           group_by(distrito, cod_mun, municipio ) %>%
+           summarize(.groups = "drop") 
+  
+  # La capa del POTA no tiene un campo código y los nombres de los ambitos
+  # territoriales no coinciden con los del dataframe datos que procede de la 
+  # tabla de adscripciones de municipios al POTA.
+  # Por tanto si agrupo la información de los alquileres atendiendo al campo
+  # nombre de la unidad territorial no lo puedo casar con la capa.
+  # Es decir, no me sirve la capa de unidades del POTA del DERA. Tengo que
+  # construirme una capa de unidades POTA con los nombres de unidades territoriales
+  # que tengo en datos, para ello hago un "dissolve" de los municipios
+  # En R, el dissolve se consigue simplemente agrupando en un objeto de tipo sf
+  
+  
+  # obtengo la tabla de municipios con la adscripción al pota
+  adsc_mun <- read_excel("datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
+                         sheet = "adscripcion municipios",
+                         col_types = rep("text", times = 11))
+  campos <- tolower(colnames(adsc_mun))
+  campos <- gsub(" ", "_", campos)
+  colnames(adsc_mun) <- campos
+  
+  #Añade un cero y se queda con los 5 últimos dígitos
+  codigo <- paste0("0",adsc_mun$codigo_municipal)
+  codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
+  
+  adsc_mun <- adsc_mun %>% 
+    mutate(codigo_municipal = codigo,
+           pota.jerarquia = jerarquía_sistema_ciudades,
+           pota.unidad_territorial = unidad_territorial) %>% 
+    filter(!is.na(provincia)) %>% 
+    select(codigo_municipal, pota.jerarquia, pota.unidad_territorial)
+  
+  # añado a los municipios la información de adscripción al POTA  
+  municipio_sf <-  left_join(municipio_sf, 
+                             adsc_mun, 
+                             by = c("cod_mun" = "codigo_municipal") )
+  
+  rm(campos, codigo)
+  
+  # disuelvo los municipios un unidades territoriales del POTA
+  POTA_sf <- municipio_sf %>% group_by(pota.unidad_territorial) %>% summarize() 
+  
+  
+  # plot(provincia_sf)
+  
+  # # Simplificar los polígonos para acelerar los proceso
+  # municipio_sf <- st_simplify(municipio_sf, dTolerance = 1)
+  # provincia_sf <- st_simplify(provincia_sf, dTolerance = 1)
+  # # No lo uso porque no veo diferencia de tiempo y sin embargo si se producen algunos
+  # # cambios en el comportamiento de la capa ya que pasa de MULTIPOLYGON a GEOMETRY
+  
+  # Obtener resúmenes de datos para todos los niveles de información
+
+  datos_provincia <- datos %>%
+    group_by(provincia_806) %>%
+    summarise(casos = n(),
+              mediana_renta_m2 = median(renta_m2),
+              mediana_renta = median(importe_de_la_renta),
+              mediana_superf = median(stotalocal_14),
+              .groups = "drop")
+  
+  datos_provincia <- datos_provincia %>% 
+    mutate(codigo = c("04","11","14","18","21","23","29","41"))
+  
+  datos_POTA <- datos %>%
+    group_by(pota.unidad_territorial) %>%
+    summarise(casos = n(),
+              mediana_renta_m2 = median(renta_m2),
+              mediana_renta = median(importe_de_la_renta),
+              mediana_superf = median(stotalocal_14),
+              .groups = "drop")
+  
+  datos_municipio <- datos %>%
+    group_by(codigo_ine) %>%
+    summarise(casos = n(),
+              mediana_renta_m2 = median(renta_m2),
+              mediana_renta = median(importe_de_la_renta),
+              mediana_superf = median(stotalocal_14),
+              .groups = "drop")
+
+  browser()
+  
+  datos_barrios <- datos %>%
+    group_by(barrio.codigo) %>%
+    summarise(casos = n(),
+              mediana_renta_m2 = median(renta_m2),
+              mediana_renta = median(importe_de_la_renta),
+              mediana_superf = median(stotalocal_14),
+              .groups = "drop")
+  
+  datos_barrios_tipolog <- datos %>%
+    group_by(barrio.codigo, f.tipolog ) %>%
+    summarise(casos = n(),
+              mediana_renta_m2 = median(renta_m2),
+              mediana_renta = median(importe_de_la_renta),
+              mediana_superf = median(stotalocal_14),
+              .groups = "drop") %>% 
+    pivot_wider(names_from = f.tipolog,
+                values_from = c(casos, mediana_renta_m2, 
+                                mediana_renta, mediana_superf),
+                names_glue = "{f.tipolog}_{.value}",)
+  
+  
+  datos$tamanio <- ifelse(datos$stotalocal_14 >= 90, "Grande","Pequeña")
+  datos_barrios_tamanio <- datos %>%
+    group_by(barrio.codigo, tamanio ) %>%
+    summarise(casos = n(),
+              mediana_renta_m2 = median(renta_m2),
+              mediana_renta = median(importe_de_la_renta),
+              mediana_superf = median(stotalocal_14),
+              .groups = "drop") %>% 
+    pivot_wider(names_from = tamanio,
+                values_from = c(casos, mediana_renta_m2, 
+                                mediana_renta, mediana_superf),
+                names_glue = "{tamanio}_{.value}",)
+  datos$tamanio <- NULL
+  
+  datos_secciones <- datos %>%
+    group_by(seccion.codigo) %>%
+    summarise(casos = n(),
+              mediana_renta_m2 = median(renta_m2),
+              mediana_renta = median(importe_de_la_renta),
+              mediana_superf = median(stotalocal_14),
+              .groups = "drop")
+  
+  datos_barrios_union <- datos %>%
+    group_by(barrio.distrito) %>%
+    summarise(casos = n(),
+              mediana_renta_m2 = median(renta_m2),
+              mediana_renta = median(importe_de_la_renta),
+              mediana_superf = median(stotalocal_14),
+              .groups = "drop")
+  
+  datos_distrito <- datos %>%
+    group_by(seccion.distrito) %>%
+    summarise(casos = n(),
+              mediana_renta_m2 = median(renta_m2),
+              mediana_renta = median(importe_de_la_renta),
+              mediana_superf = median(stotalocal_14),
+              .groups = "drop")
+  
+  
+  
+  
+  # Añadir los datos numéricos a las capas para poder representarlos en mapas
+
+  provincia_sf <- provincia_sf %>% 
+    left_join (datos_provincia, by = c("codigo" = "codigo")) # %>% 
+  # mutate(etiqueta = paste(provincia,"\n",casos))
+  
+  
+  municipio_sf <- municipio_sf %>% 
+    left_join (datos_municipio, by = c("cod_mun" = "codigo_ine"))    %>%
+    mutate(casos = coalesce(casos, 0))  #sustituye los NA por 0
+  
+  POTA_sf <- POTA_sf %>% 
+    left_join (datos_POTA, by = c("pota.unidad_territorial" = "pota.unidad_territorial"))%>%
+    mutate(casos = coalesce(casos, 0))  #sustituye los NA por 0
+  
+  barrios_sf <- barrios_sf %>% 
+    left_join (datos_barrios, by = c("barrio.codigo" = "barrio.codigo"))%>%
+    left_join (datos_barrios_tipolog, by = c("barrio.codigo" = "barrio.codigo")) %>% 
+    left_join (datos_barrios_tamanio, by = c("barrio.codigo" = "barrio.codigo")) %>% 
+    mutate(casos = coalesce(casos, 0)) 
+  
+  secciones_sf <- secciones_sf %>% 
+    left_join (datos_secciones, by = c("codigo" = "seccion.codigo"))%>%
+    mutate(casos = coalesce(casos, 0)) 
+  
+  
+  
+  barrios_union_sf <- barrios_union_sf %>% 
+    left_join (datos_barrios_union, by = c("distrito" = "barrio.distrito"))%>%
+    mutate(casos = coalesce(casos, 0)) 
+  
+  distritos_sf <- distritos_sf %>% 
+    left_join (datos_distrito, by = c("distrito" = "seccion.distrito"))%>%
+    mutate(casos = coalesce(casos, 0)) 
+  
+  
+  rm(datos_provincia, datos_municipio, datos_POTA, datos_barrios, 
+     datos_barrios_union, datos_secciones, datos_distrito)
+  
+  
+  save(provincia_sf, municipio_sf, POTA_sf, barrios_sf,
+       secciones_sf, barrios_union_sf, distritos_sf,
+       file = "datos_output/datos_para_mapas.Rdata")
   
 }
+
+
+

@@ -96,9 +96,10 @@ rm(BADEA_, BADEA_municipio_806, BADEA_provincia_806)
 
 Selecciona variables a cruzar
 datos <- datos %>% 
-  select(f.)
+  select(f.durac_contrato, f.)
 
 datos$f
+
 ###################################################################
 # 2 ###############################################################
 ###################################################################
@@ -112,9 +113,12 @@ Recodificar las variables a los códigos de BADEA
 Gnerar salida para BADEA. El código está al principio de este fichero
 
 
+###################################################################
+# 4 ###############################################################
+###################################################################
 
-
-
+Sustituir en la salida los campos no rellenos por el valor (todos)
+para que cuando no se ha usado una variable en un cruce tome el valor todos
 
 
 

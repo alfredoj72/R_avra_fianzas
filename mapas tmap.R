@@ -1,6 +1,5 @@
-
 #################  INICIO    ################
-paquetes_necesarios = c("sf","tidyverse","flextable","ggplot2","tmap") # c( "ggplot2","classInt") 
+paquetes_necesarios = c("sf","tidyverse","tmap", "readxl","leaflet") # c( "flextable","classInt") 
 for (paq in paquetes_necesarios){
   if (!(paq %in% rownames(installed.packages()))){
     install.packages(paq, dependencies = T)}
@@ -8,100 +7,43 @@ for (paq in paquetes_necesarios){
 }
 rm(paq, paquetes_necesarios)
 
+# # Si voy a hacer mapas solo con datos de AVRA, sin los de catastro
+# # Al intentar hacer mapas con datos de catastro dará error
+# rm(list =ls())
+# load("./datos_output/avra_catastro_2022.RData")
+# datos <- avra_catastro_2022 ; rm(avra_catastro_2022)
+# avra_datos_originales <- datos[["originales"]]
+# # avra_catastro <- datos[["avra_catastro"]]
+# # tabla_frecuencias  <- datos[["tabla_frecuencias"]]
+# # tabla_frecuencias_final  <- datos[["tabla_frecuencias_final"]]
+# # Fianzas_casan_1_vivienda <- datos[["Fianzas_casan_1_vivienda"]]
+# # Fianzas_no_casan_catastro <- datos[["Fianzas_no_casan_catastro"]]
+# # Fianzas_casan_distintas_viviendas <- datos[["Fianzas_casan_distintas_viviendas"]]
+# # Fianzas_casan_distintas_viviendas_case <- datos[["Fianzas_casan_distintas_viviendas_case"]]
+# datos <- avra_datos_originales
+# 
+# rm(avra_datos_originales)
 
-## Construccion de los datos de partida para tmap ########
-# parto
+
 rm(list =ls())
-load("./datos_output/avra_catastro_2022.RData")
-datos <- avra_catastro_2022 ; rm(avra_catastro_2022)
-avra_datos_originales <- datos[["originales"]]
-# avra_catastro <- datos[["avra_catastro"]]
-tabla_frecuencias  <- datos[["tabla_frecuencias"]]
-tabla_frecuencias_final  <- datos[["tabla_frecuencias_final"]]
-# Fianzas_casan_1_vivienda <- datos[["Fianzas_casan_1_vivienda"]]
-# Fianzas_no_casan_catastro <- datos[["Fianzas_no_casan_catastro"]]
-# Fianzas_casan_distintas_viviendas <- datos[["Fianzas_casan_distintas_viviendas"]]
-# Fianzas_casan_distintas_viviendas_case <- datos[["Fianzas_casan_distintas_viviendas_case"]]
-datos <- avra_datos_originales
-
-rm(avra_datos_originales, tabla_frecuencias, tabla_frecuencias_final)
-
-##Cargar las capas y añadir datos   #
-
-# ## Carga de capas shp ubicadas en directorio local
-#  provincia_sf <- st_read(dsn = "./capas_in/13_01_Provincia.shp")
-#  municipio_sf <- st_read(dsn = "./capas_in/13_01_TerminoMunicipal.shp")
-
-# Carga de capas servidas a través de servicios WFS
-# Especifica la URL del servicio WFS
-tipo <- "WFS"
-url_wfs <- "http://www.ideandalucia.es/services/DERA_g13_limites_administrativos/wfs?"
-peticion <- "request=GetCapabilities"
-orden <- paste(tipo,":",url_wfs,peticion, sep = "")
-
-# Obtén la lista de capas disponibles en el WFS
-capas_disponibles <- st_layers(orden)
-
-# Muestra la lista de capas
-print(capas_disponibles["name"])
-
-# # Añadir las capas indicando el nombre completo
-# name_capa <- "DERA_g13_limites_administrativos:g13_01_Provincia"
-# provincia_sf <- st_read(dsn = orden, layer = name_capa)
-#
-# name_capa <- "DERA_g13_limites_administrativos:g13_01_TerminoMunicipal"
-# municipio_sf <- st_read(dsn = orden, layer = name_capa)
-
-# Añadir las capas buscando texto dentro de su nombre
-# type = 6 devuelve geometría de tipo MULTIPOLYGON
-lista_capas <- capas_disponibles[[1]]
-name_provincia <- lista_capas[grepl("Provincia", lista_capas)]
-provincia_sf <- st_read(dsn = orden, layer = name_provincia, type = 6)
-
-name_municipio <- lista_capas[grepl("Municipal", lista_capas)]
-municipio_sf <- st_read(dsn = orden, layer = name_municipio, type = 6)
-
-# plot(provincia_sf)
-rm(tipo,url_wfs,peticion,orden,capas_disponibles,lista_capas,name_provincia,name_municipio)
-
-# # Simplificar los polígonos para acelerar los proceso
-# municipio_sf <- st_simplify(municipio_sf, dTolerance = 1)
-# provincia_sf <- st_simplify(provincia_sf, dTolerance = 1)
-# # No lo uso porque no veo diferencia de tiempo y sin embargo si se producen algunos
-# # cambios en el comportamiento de la capa ya que pasa de MULTIPOLYGON a GEOMETRY
-
-# Obtener resúmenes de datos para provincias y municipios
-
-datos_provincia <- datos %>%
-  group_by(provincia_806) %>%
-  summarise(casos = n(), .groups = "drop")
-
-datos_provincia <- datos_provincia %>% 
-  mutate(codigo = c("04","11","14","18","21","23","29","41"))
-
-datos_municipio <- datos %>%
-  group_by(codigo_ine) %>%
-  summarise(casos = n(), .groups = "drop")
-
-# Añadir los datos numéricos a las capas para poder representarlos en mapas
-
-provincia_sf <- provincia_sf %>% 
-  left_join (datos_provincia, by = c("codigo" = "codigo")) # %>% 
-# mutate(etiqueta = paste(provincia,"\n",casos))
+load("./datos_output/datos_para_analisis_2022.RData")
+datos <- datos_para_analisis_2022[["datos"]]
+datos <- st_drop_geometry(datos)
 
 
-municipio_sf <- municipio_sf %>% 
-  left_join (datos_municipio, by = c("cod_mun" = "codigo_ine"))     %>%
-  mutate(casos = coalesce(casos, 0))  #sustituye los NA por 0
+# Si no existe el archivo que contiene las capas con los atributos, lo crea
+if (!file.exists("datos_output/datos_para_mapas.Rdata")) {
+  source("Funciones.R")
+  # Ejecuta el script para crear las capas y añadir los campos
+  crea_capas_y_campos()
+} 
 
-save.image(file = "datos_para_mapas.Rdata")
-
+# Carga las capas
+load(file = "datos_output/datos_para_mapas.Rdata")
 
 
 ## Con tmap ########
 
-rm(list =ls())
-load(file = "datos_para_mapas.Rdata")
 
 tmap_mode("view")   # interactivo. Para mapas fijos usar tmap_mode("plot")
 
@@ -109,7 +51,7 @@ provincia_sf$id_casos <- paste("Nº testigos:", provincia_sf$casos)
 #Mapa provincias
 mapa_prov <-
   tm_shape(provincia_sf) + 
-  tm_fill(id = "id_casos",         # Se muestra el número de casos al pasar el cusor
+  tm_fill(id = "id_casos",         # Se muestra el número de casos al pasar el cursor
           popup.vars = FALSE,    #No se activa información al picar 
           col="casos",
           title = "Nº de alquileres",
@@ -131,13 +73,13 @@ mapa_prov
 # elimino el campo creado para no dejar basura en la capa
 provincia_sf <- provincia_sf %>% select(-id_casos)
 
-#cambiar el campo que usa como etiqueta al poner el cursos sobre la provincia!!!!!
+
 
 # tm_shape(provincia_sf, name = "Nº testigos" ) +
 #   tm_polygons(col = "casos",
 #           style = "cont",
 #           border.col = "gray", lwd = 0.5
-#           ) 
+#           )
 # 
 # tm_shape(provincia_sf, name = "Nº testigos" ) +
 #   tm_bubbles(col = "casos", size = "casos",
@@ -219,7 +161,7 @@ municipio_sf <- municipio_sf %>% select(-id_casos)
 municipio_sf$id_casos <- paste( municipio_sf$nombre,"-",  
                                 municipio_sf$casos, "casos")
 
-# Creo una  variable para que todos los municipios con > 10 casos salgan del mismo tamaño
+# Creo una  variable para que todos los municipios con < 10 casos salgan del mismo tamaño
 municipio_sf$casos_aux <- ifelse(municipio_sf$casos<10, 0.0001, municipio_sf$casos)
 
 paleta = c("white", rev(hcl.colors(4, "YlOrBr")))
@@ -277,10 +219,358 @@ municipio_sf <- municipio_sf %>% select(-id_casos,-casos_aux)
 
 
 
+#######################################################################
+####  Mapas de coropletas barrios ####   Testigos
+
+# Creo variable para ser usada al pasar cursor sobre municipio
+barrios_sf$id_casos <- paste( barrios_sf$nombre,"-",  
+                              barrios_sf$casos, "casos")
+
+paleta = c("white", rev(hcl.colors(4, "YlOrBr")))
+max <- max(barrios_sf$casos, rm.na = TRUE)
+mapa_barrios_corop <-
+  # tm_shape(municipio_sf )+      # ESto lo hace pesado y lento
+  # tm_borders(col = "gray", lwd = 3,
+  #            group = "Registro de fianzas")+
+  tm_basemap(NULL) +  # (NULL) +
+  
+  tm_tiles("OpenStreetMap", alpha = 0.35, 
+           group = "Fondo: OpenStreetMap") +
+  
+  tm_shape(municipio_barrio_sf )+
+  tm_borders(col = "thistle", lwd = 2.5,
+             group = "Registro de fianzas")+
+  #tm_facets(by = "nombre", ncol = 2) +
+  
+  tm_shape(barrios_sf) +
+  tm_fill(id = "id_casos",      # Se muestra el número de casos al pasar el cusor
+          popup.vars = FALSE,    #No se activa información al picar 
+          col = "casos", palette = paleta, title="Nº de Casos",
+          colorNA = "white", textNA ="Sin datos",
+          style = "fixed",
+          interval.closure = "left",
+          breaks = c(0,10, 50, 100, 300, max) ,
+          labels = c("0-9","10 - 49", "50 - 99", "100 - 299", "300 +"),
+          group = "Registro de fianzas"
+  ) + 
+  tm_borders(col = "thistle", lwd = 2,
+             group = "Registro de fianzas")+
+  tm_layout(legend.format = list(text.separator = "-"))  +
+  
+  tm_facets(by = "municipio", ncol = 2) 
+
+tmap_mode("view")
+print(mapa_barrios_corop)
+
+# tmap_mode("plot") # no la opción plot no consigo que los mapas se vean bien
+# print(mapa_barrios_corop + tm_facets( 'municipio',free.scales = T))
+
+# Elimino variables auxiliares para no dejar basura
+barrios_sf <- barrios_sf %>% select(-id_casos)
+
+# fin mapa coropletas casos
+
+
+#######################################################################
+####  Mapas de coropletas barrios ####   Precio_m2
+
+# questionr::icut(barrios_sf, "mediana_renta_m2")
+# me inspiro en 5 cortes con metodo cuantíles: 3,6,9,12
+
+# Creo variable para ser usada al pasar cursor sobre municipio
+barrios_sf$id_casos <- paste( barrios_sf$nombre,"-",
+                              round(barrios_sf$mediana_renta_m2,1)
+                              , "€/m2")
+
+barrios_sf$id_casos2 <- paste( barrios_sf$nombre,"- Sin datos (< 10 testigos)")       
+
+paleta = c(rev(hcl.colors(6, "YlOrBr")))
+max <- max(barrios_sf$mediana_renta_m2, na.rm = TRUE)
+mapa_barrios_corop <-
+  # tm_shape(municipio_sf )+      # ESto lo hace pesado y lento
+  # tm_borders(col = "gray", lwd = 3,
+  #            group = "Registro de fianzas")+
+  tm_basemap(NULL) +  # (NULL) +
+  
+  tm_tiles("OpenStreetMap", alpha = 0.35, 
+           group = "Fondo: OpenStreetMap") +
+  
+  tm_shape(municipio_barrio_sf )+
+  tm_borders(col = "thistle", lwd = 2.5,
+             group = "Registro de fianzas")+
+  #tm_facets(by = "nombre", ncol = 2) +
+  
+  tm_shape(barrios_sf %>% filter(casos < 10)) +
+  tm_fill(id = "id_casos2", 
+          col = "gray95")+
+  
+  tm_shape(barrios_sf %>% filter(casos >= 10)) +
+  tm_fill(id = "id_casos",      # Se muestra el número de casos al pasar el cusor
+          popup.vars = FALSE,    #No se activa información al picar 
+          col = "mediana_renta_m2", 
+          palette = paleta, 
+          title="Mediana Precio mensual €/m2",
+          colorNA = "gray95", textNA ="Sin datos",
+          # style = "pretty",
+          # n=5,
+          interval.closure = "left",
+          
+          breaks = c(0,2, 4, 6, 8, 10, max) ,
+          labels = c("[0-2)","[2 - 4)", "[4 - 6)", "[6 - 8)","[8 - 10)", "[10 +)"),
+          
+          # opción mia
+          # breaks = c(0,3, 6, 9, 12, max) ,
+          # labels = c("[0-3)","[3 - 6)", "[6 - 9)", "[9 - 12)", "[12 +)"),
+          group = "Registro de fianzas"
+  ) + 
+  tm_borders(col = "thistle", lwd = 2,
+             group = "Registro de fianzas")+
+  tm_layout(legend.format = list(text.separator = "-")) +
+  
+  tm_facets(by = "municipio", ncol = 2) 
+
+
+print(mapa_barrios_corop)
+# Elimino variables auxiliares para no dejar basura
+barrios_sf <- barrios_sf %>% select(-id_casos)
+
+
+## FIN mapa coropletas renta_m2
+
+
+#######################################################################
+####  Mapas de coropletas barrios ####   Precio
+
+# usar para encontrar los mejores intervalos
+# questionr::icut(barrios_sf, "mediana_renta")
+
+# Creo variable para ser usada al pasar cursor sobre municipio
+barrios_sf$id_casos <- paste( barrios_sf$nombre,"-",
+                              round(barrios_sf$mediana_renta,1)
+                              , "€/mes")
+
+barrios_sf$id_casos2 <- paste( barrios_sf$nombre,"- Sin datos (< 10 testigos)")       
+
+paleta = c(rev(hcl.colors(5, "YlOrBr")))
+max <- max(barrios_sf$mediana_renta, na.rm = TRUE)
+mapa_barrios_corop <-
+  # tm_shape(municipio_sf )+      # ESto lo hace pesado y lento
+  # tm_borders(col = "gray", lwd = 3,
+  #            group = "Registro de fianzas")+
+  tm_basemap(NULL) +  # (NULL) +
+  
+  tm_tiles("OpenStreetMap", alpha = 0.35, 
+           group = "Fondo: OpenStreetMap") +
+  
+  tm_shape(municipio_barrio_sf )+
+  tm_borders(col = "thistle", lwd = 2.5,
+             group = "Registro de fianzas")+
+  #tm_facets(by = "nombre", ncol = 2) +
+  
+  tm_shape(barrios_sf %>% filter(casos < 10)) +
+  tm_fill(id = "id_casos2", 
+          col = "gray95")+
+  
+  tm_shape(barrios_sf %>% filter(casos >= 10)) +
+  tm_fill(id = "id_casos",      # Se muestra el número de casos al pasar el cusor
+          popup.vars = FALSE,    #No se activa información al picar 
+          col = "mediana_renta", 
+          palette = paleta, 
+          title="Mediana Precio mensual €/mes",
+          colorNA = "gray95", textNA ="Sin datos",
+          # style = "pretty",
+          # n=5,
+          interval.closure = "left",
+          breaks = c(0,300, 500, 700, 900, 1200,  max) ,
+          labels = c("[0-300)","[300 - 500)", "[500 - 700)", "[700 - 900)",
+                     "[900 - 1.200)","[1.200 +)"),
+          group = "Registro de fianzas"
+  ) + 
+  tm_borders(col = "thistle", lwd = 2,
+             group = "Registro de fianzas")+
+  tm_layout(legend.format = list(text.separator = "-")) +
+  
+  tm_facets(by = "municipio", ncol = 2) 
+
+
+print(mapa_barrios_corop)
+# Elimino variables auxiliares para no dejar basura
+barrios_sf <- barrios_sf %>% select(-id_casos)
+
+
+## FIN mapa coropletas precio renta
+
+
+# Para conseguir que en cada facet salgan los barrios de un municipio y el 
+# contorno del municipio debo quedarme solo con los municipios presentes en 
+# la capa de barrios ya que si los pongo todos el tamaño se dispara y el 
+# resultado se hace muy lento
+# Voy a quedarme solo con los municipios que hay en la capa de barrios
+
+# tomo la lista de municipios presentes en la capa de barrios
+aux_mun <- unique(barrios_sf$cod_mun)
+aux_mun <-  data.frame(cod_mun = aux_mun)
+
+# me quedo solo con los municipios de la tabla anterior
+municipio_barrio_sf <- municipio_sf %>% 
+  right_join( aux_mun, by = c("cod_mun" = "cod_mun"))
+
+
+# ------------------------------------------------------------------
+# Defino función que hace mapas de coropletas sub-municipal 
+# con facetas por municipio
+
+coropletas_facetado <- function(capa, c_filtro, c_mapa, c_id1, c_id2, titulo,
+                                roturas, etiquetas){
+  
+  paleta = c(rev(hcl.colors(5, "YlOrBr")))
+  #max <- max(capa[[c_mapa]], na.rm = TRUE)
+  
+  m <-
+    # tm_shape(municipio_sf )+      # ESto lo hace pesado y lento
+    # tm_borders(col = "gray", lwd = 3,
+    #            group = "Registro de fianzas")+
+    tm_basemap(NULL) +  # (NULL) +
+    
+    tm_tiles("OpenStreetMap", alpha = 0.35, 
+             group = "Fondo: OpenStreetMap") +
+    
+    tm_shape(municipio_barrio_sf )+
+    tm_borders(col = "thistle", lwd = 2.5,
+               group = "Registro de fianzas")+
+    #tm_facets(by = "nombre", ncol = 2) +
+    
+    tm_shape(capa %>% filter({{c_filtro}} < 10 | is.na({{c_filtro}}))) +
+    tm_fill(id = c_id2, 
+            col = "gray95")+
+    
+    tm_shape(capa %>% filter({{c_filtro}} >= 10)) +
+    tm_fill(id = c_id1,      # Se muestra el número de casos al pasar el cusor
+            popup.vars = FALSE,    #No se activa información al picar 
+            col = c_mapa, 
+            palette = paleta, 
+            title= titulo,
+            colorNA = "gray95", textNA ="Sin datos",
+            # style = "pretty",
+            # n=5,
+            interval.closure = "left",
+            breaks = c(roturas) ,
+            labels = etiquetas,
+            group = "Registro de fianzas"
+    ) + 
+    tm_borders(col = "thistle", lwd = 2,
+               group = "Registro de fianzas")+
+    tm_layout(legend.format = list(text.separator = "-")) +
+    
+    tm_facets(by = "municipio", ncol = 2) 
+  
+  return(m)
+  
+} #fin funcion
+
+
+#----------------------------------------------------------------------------
+# mapa coropletas renta  todas las viviendas
+# Creo variable para ser usada al pasar cursor sobre municipio
+barrios_sf$id_casos1 <- paste( barrios_sf$nombre,"-",
+                               round(barrios_sf$mediana_renta,1), "€/mes")
+
+barrios_sf$id_casos2 <- paste( barrios_sf$nombre,"- Sin datos (< 10 testigos)")  
+
+max <- max(barrios_sf$mediana_renta, na.rm = TRUE)
+mapa <- coropletas_facetado(barrios_sf, 
+                            c_filtro = casos, 
+                            c_mapa = "mediana_renta",
+                            c_id1 = "id_casos1",
+                            c_id2 = "id_casos2",
+                            titulo ="Mediana Precio €/mes",
+                            roturas = c(0,300, 500, 700, 900, 1200, max),
+                            etiquetas = c("[0-300)","[300 - 500)", "[500 - 700)", 
+                                          "[700 - 900)","[900 - 1.200)","[1.200 +)") )
+
+print(mapa)
+barrios_sf <- barrios_sf %>% select(- c(id_casos1, id_casos2))
+
+#----------------------------------------------------------------------------
+# mapa coropletas renta_m2 todas las viviendas
+barrios_sf$id_casos1 <- paste( barrios_sf$nombre,"-",
+                               round(barrios_sf$mediana_renta_m2,1), "€/m2")
+
+barrios_sf$id_casos2 <- paste( barrios_sf$nombre,"- Sin datos (< 10 testigos)")  
+
+max <- max(barrios_sf$mediana_renta_m2, na.rm = TRUE)
+mapa <- coropletas_facetado(barrios_sf, 
+                            c_filtro = casos, 
+                            c_mapa = "mediana_renta_m2",
+                            c_id1 = "id_casos1",
+                            c_id2 = "id_casos2",
+                            titulo ="Mediana Precio €/m2 mes",
+                            roturas = c(0,2, 4, 6, 8, 10, max) ,
+                            etiquetas = c("[0-2)","[2 - 4)", "[4 - 6)", 
+                                          "[6 - 8)","[8 - 10)", "[10 +)") )
+print(mapa)
+barrios_sf <- barrios_sf %>% select(- c(id_casos1, id_casos2))
+
+
+#----------------------------------------------------------------------------
+# mapa coropletas renta_m2 viviendas plurifamiliares
+barrios_sf$id_casos1 <- paste( barrios_sf$nombre,"-",
+                               round(barrios_sf$Plurifamiliar_mediana_renta_m2,1),
+                               "€/m2")
+
+barrios_sf$id_casos2 <- paste( barrios_sf$nombre,"- Sin datos (< 10 testigos)")  
+
+max <- max(barrios_sf$Plurifamiliar_mediana_renta_m2, na.rm = TRUE)
+mapa <- coropletas_facetado(barrios_sf, 
+                            c_filtro = Plurifamiliar_casos, 
+                            c_mapa = "Plurifamiliar_mediana_renta_m2",
+                            c_id1 = "id_casos1",
+                            c_id2 = "id_casos2",
+                            titulo ="Mediana Precio €/m2 mes. V plurifamiliares.",
+                            roturas = c(0,2, 4, 6, 8, 10, max) ,
+                            etiquetas = c("[0-2)","[2 - 4)", "[4 - 6)", 
+                                          "[6 - 8)","[8 - 10)", "[10 +)") )
+print(mapa)
+barrios_sf <- barrios_sf %>% select(- c(id_casos1, id_casos2))
+
+
+#----------------------------------------------------------------------------
+# mapa coropletas renta_m2 union de barrios todas las viviendas
+barrios_union_sf$id_casos1 <- paste( barrios_union_sf$distrito,"-",
+                                     round(barrios_union_sf$mediana_renta_m2,1), "€/m2")
+
+barrios_union_sf$id_casos2 <- paste( barrios_union_sf$distrito,"- Sin datos (< 10 testigos)")  
+
+max <- max(barrios_union_sf$mediana_renta_m2, na.rm = TRUE)
+mapa <- coropletas_facetado(barrios_union_sf, 
+                            c_filtro = casos, 
+                            c_mapa = "mediana_renta_m2",
+                            c_id1 = "id_casos1",
+                            c_id2 = "id_casos2",
+                            titulo ="Macrobarrios. Mediana Precio €/m2 mes",
+                            roturas = c(0,2, 4, 6, 8, 10, max) ,
+                            etiquetas = c("[0-2)","[2 - 4)", "[4 - 6)", 
+                                          "[6 - 8)","[8 - 10)", "[10 +)") )
+tmap_mode("view")
+print(mapa)
+barrios_union_sf <- barrios_union_sf %>% select(- c(id_casos1, id_casos2))
+
+#----------------------------------------------------------------------------
+
+# con la funcion coropletas_facetado Puedo hacer mapas de distrito,
+# seecciones, barrios y macrobarrios.
+# tengo datos de casos, mediana de (precio, precio_m2 y superficie) para
+# cada una de las unidades territoriales inframunicipal, ADEMAS,
+# para el caso de los barrios he atributos distinguiendo si son unifamiliares o 
+# colectivas y si son de menos o más de 90 m2
 
 
 
-####### pasando de tmap a leaflet ####
+
+
+
+
+####### pasando de tmap a leaflet #### NO SIRVE CON FACETS
 
 source("mapas tmap.R")
 # parto de la idea de que ya tengo los 3 mapas creados con tmap:
@@ -314,7 +604,7 @@ mapa <- tmap_leaflet(mapa_municipios_corop) %>%
                    options = layersControlOptions(collapsed = F))
 
 mapa 
-# OTRAS WMS: OJO en portátil todo va bien. En pc sobremesa no
+# OTRAS WMS: OJO en portátil todo va bien. En pc sobremesa solo alguna de las capas de fondo. openstreetmap si va bien
 # busco wms de base para usar en mapas regionales
 # http://www.ideandalucia.es/services/mta400v_2016/wms  mta400v_2016
 # https://www.ign.es/wms-inspire/ign-base callejero

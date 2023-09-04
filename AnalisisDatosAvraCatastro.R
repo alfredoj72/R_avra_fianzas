@@ -15,7 +15,7 @@ rm(paq, paquetes_necesarios)
 # rm(list =ls())
 # load("./datos_output/datos_para_analisis_2022.RData")
 # contenedor <- datos_para_analisis_2022 ; rm(datos_para_analisis_2022)
-# datos <- contenedor[["Fianzas_viviendas"]]
+# datos <- contenedor[["datos"]]
 # rm(contenedor)
 
 rm(list =ls())
@@ -24,8 +24,8 @@ contenedor <- avra_catastro_2022
 rm(avra_catastro_2022)
 #avra_datos_originales <- contenedor[["originales"]]
 #avra_catastro <- contenedor[["avra_catastro"]]
-# tabla_frecuencias  <- contenedor[["tabla_frecuencias"]]
-# tabla_frecuencias_final  <- contenedor[["tabla_frecuencias_final"]]
+ tabla_frecuencias  <- contenedor[["tabla_frecuencias"]]
+ tabla_frecuencias_final  <- contenedor[["tabla_frecuencias_final"]]
  Fianzas_casan_1_vivienda <- contenedor[["Fianzas_casan_1_vivienda"]]
 # Fianzas_no_casan_catastro <- contenedor[["Fianzas_no_casan_catastro"]]
 # Fianzas_casan_distintas_viviendas <- contenedor[["Fianzas_casan_distintas_viviendas"]]
@@ -37,7 +37,7 @@ rm(contenedor, Fianzas_casan_1_vivienda)
 
 
 # inicio con datos para el analisis
-rm(list =ls())
+#rm(list =ls())
 load("./datos_output/datos_para_analisis_2022.RData")
 datos <- datos_para_analisis_2022[["datos"]]
 
@@ -462,105 +462,8 @@ pinta_tabla3 <- function(datos,campo,campo_descriptivo,orden = "NO"){
 }
 
 
-######## DEFINICION DE FACTORES ############
-#
 
-# Si convierto los NA en un nivel del factor comenzará a ordenarse como el resto
-# de los niveles, si lo dejo como NA se van siempre al último de la lista.
-
-# datos <- datos %>%
-#   mutate (tipo_persona_arrendador = as.character(tipo_persona_arrendador),
-#           sexo_arrendador = as.character(sexo_arrendador))
-
-# Para obtener los resultados de datos para BADEA es preciso contar con todos
-# los municipios, todas las secciones censales y todos los distritos censales
-# Para ello voy a definir los factores con todos ellos y así podré obtenerlos
-# en los resultados aunque no tengan datos asociados
-# Los factores de secciones censales, distritos censales, unidades POTA y barrios
-# lo hago en la función preparacion_datos al tiempo que añado la información.
-# El factor de los municipios lo hago aqui
-
-# Leo los municipios de la capa de municipios de datos_aux. En los script de 
-# creación de mapas leo los datos de WMF. Aquí lo hago distinto.
-
-
-Municipios_sf <- st_read(dsn = "datos_aux/13_01_TerminoMunicipal.shp", quiet = TRUE)
-Municipios <- st_drop_geometry(Municipios_sf) %>% 
-  select(cod_mun, nombre) %>% 
-  distinct(cod_mun, nombre)
-
-datos <- datos %>% 
-  mutate(cod_ine = factor(cod_ine,
-                          levels = Municipios$cod_mun, 
-                          labels = Municipios$nombre)
-         )
-rm(Municipios_sf, Municipios)
-
-datos <- datos %>%
-  #mutate (tipo_persona_arrendador = replace_na(tipo_persona_arrendador,"NEspec")) %>% # no hay casos
-  mutate (tipo_persona_arrendador = factor(tipo_persona_arrendador, 
-                                   levels = c("F", "J"), 
-                                   labels = c("Física", "Jurídica")),
-          tipo_entidad_arrendador = as.factor(tipo_entidad_arrendador),
-          sexo_arrendador = factor(sexo_arrendador,
-                                   levels = c("M", "V"),
-                                   labels = c("Mujeres", "Hombres")),
-          sexo_arrendatario = factor(sexo_arrendatario,
-                                   levels = c("M", "V"),
-                                   labels = c("Mujeres", "Hombres")),
-          nacionalidad_arrendatario = factor(nacionalidad_arrendatario),
-          tipo_de_arrendamiento = case_when(     #otra forma podría ser usando na_if()
-            tipo_de_arrendamiento == "AMUEBLADO"       ~ "Amueblado", 
-            tipo_de_arrendamiento == "SIN AMUEBLAR"    ~ "Sin Amueblar",
-               TRUE                                 ~ NA_character_) , 
-          tipo_de_arrendamiento = factor(tipo_de_arrendamiento),
-          provincia_806 = factor (provincia_806, 
-                                  labels = c("Almería", "Cádiz","Córdoba","Granada","Huelva","Jaén","Málaga","Sevilla"))
-          )
-
-datos <- datos %>%
-  mutate (  tipo_de_arrendamiento = case_when(     #otra forma podría ser usando na_if()
-    tipo_de_arrendamiento == "AMUEBLADO"       ~ "Amueblado", 
-    tipo_de_arrendamiento == "SIN AMUEBLAR"    ~ "Sin Amueblar",
-    TRUE                                 ~ NA_character_) , 
-    tipo_de_arrendamiento = factor(tipo_de_arrendamiento))
-
-
-anyos <-cut(datos$duracion_contrato_años,
-            breaks = c(0,1,3,5,max(datos$duracion_contrato_años, na.rm = TRUE)),
-            right = TRUE,    #Intervalos cerrados por la derecha
-            include.lowest = TRUE,  # Para que incluya el valor máximo
-            dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
-
-etiquetas <- c("1 año",">1 - 3 años",">3 - 5 años",">5 años")
-
-datos <- datos %>% mutate(f.durac_contrato = factor(anyos, labels =etiquetas))
-
-
-#max <- max(datos$num_habitaciones,  na.rm = TRUE)
-habit_agrupa <- 4  # A partir de 4 habitaciones los agrupa en una sola barra
-cortes <- c(seq(0, habit_agrupa, 1),max(datos$num_habitaciones, na.rm = T))
-etiquetas <- c(seq(1,habit_agrupa,1),glue("{habit_agrupa+1} o más"))
-n_hab <-  cut(datos$num_habitaciones, 
-              breaks = cortes,
-              rigth = TRUE,
-              include.lowest = TRUE)
-
-datos <- datos %>% mutate(f.hab = factor(n_hab, labels =etiquetas))
-
-
-rentas <-cut(datos$importe_de_la_renta,
-             breaks = c(0,300,500,700,900,1200,max(datos$importe_de_la_renta, na.rm = TRUE)),
-             right = FALSE,    #Intervalos cerrados por la izquierda
-             include.lowest = TRUE,  # Para que incluya el valor máximo
-             dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
-
-etiquetas <- c("<300€","300€ - 499€","500€ - 699€",
-               "700€ - 899€","900€ - 1.199€",">=1.200€")
-
-datos <- datos %>% mutate(f.renta_alq = factor(rentas, labels =etiquetas))
-
-# ANALISIS DE DATOS AUSENTES (NA) #####
+##        ANALISIS DE DATOS AUSENTES (NA) #####
 
 #pacman::p_load(naniar)
 library(naniar)
@@ -583,7 +486,7 @@ datos %>%
 
 # Gráfico de valores faltantes en todo el dataframe
 gg_miss_fct(datos, tipo_persona_arrendador) + labs(title = "Valores no disponibles")
-######## ANALISIS VARIABLE A VARIABLE ###############################
+##        ANALISIS VARIABLE A VARIABLE ###############################
 # Primero voy a hacer una descripción breve de las variables
 # Por último haremos un análisis cruzado variables
 
@@ -1658,7 +1561,7 @@ ggplot(datos,
 ####################   Importe de la fianza  ####
 # Hacer analisis de los casos en que la fianza es distinta a la renta para ver cuantos casos responden cambios en el contrato
 
-##          CONTINUA SI LA TABLA TIENE DATOS DE CATASTRO ####
+##        CONTINUA SI LA TABLA TIENE DATOS DE CATASTRO ####
 # Comprobar que los campos del catastro están en el dataframe para poder continuar
 # se comprueba la existencia del campo id_ams y si no está se aborta el proceso
 
@@ -1666,144 +1569,7 @@ if (!"id_ams" %in% colnames(datos)) {
   stop("NO EXISTE el campo id_ams y por tanto tampoco el resto de campos de catastro")
 }
 
-######## DEFINICION DE FACTORES ####
-# Aquí iré rectificando los factores conforme los vaya definiendo para usarlos
 
-
-superf <-cut(datos$stotalocal_14,
-             breaks = c(min(datos$stotalocal_14, na.rm = TRUE),
-                        45,65,85,105,150,max(datos$stotalocal_14, na.rm = TRUE)),
-             right = FALSE,    #Intervalos cerrados por la izquierda
-             include.lowest = TRUE,  # Para que incluya el valor máximo
-             dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
-
-etiquetas <- c("Hasta 45","45 - <65","65 - <85",
-               "85 - <105","105 - <150","150 o más")
-
-datos <- datos %>% mutate(f.super = factor(superf, labels =etiquetas))
-
-
-renta_aux <-cut(datos$renta_m2,
-                breaks = c(min(datos$renta_m2, na.rm = TRUE),
-                           2,4,6,8,10,max(datos$renta_m2, na.rm = TRUE)),
-                right = FALSE,    #Intervalos cerrados por la izquierda
-                include.lowest = TRUE,  # Para que incluya el valor máximo
-                dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
-
-etiquetas <- c("Menos 2","2 a menos de 4","4 a menos de 6",
-               "6 a menos de 8","8 a menos de 10","10 o más")
-
-datos <- datos %>% mutate(f.renta_m2 = factor(renta_aux, labels =etiquetas))
-
-
-antig <-cut(datos$a_ant_bim,
-            breaks = c(min(datos$a_ant_bim, na.rm = TRUE),
-                       1960,1970,1980,1990,2000,2010,
-                       max(datos$a_ant_bim, na.rm = TRUE)),
-            right = FALSE,    #Intervalos cerrados por la izquierda
-            include.lowest = TRUE,  # Para que incluya el valor máximo
-            dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
-
-etiquetas <- c("Antes 1960","1960 - <1970","1970 - <1980",
-               "1980 - <1990","1990 - <2000","2000 - <2010", "Desde 2010")
-
-datos <- datos %>% mutate(f.antig_bi = factor(antig, labels =etiquetas))
-
-
-
-
-datos <- datos %>%
-  mutate(f.tipolog = case_when(substr(tip_const4d_14, 1, 3) == "011"  ~ "Plurifamiliar",
-                               substr(tip_const4d_14, 1, 3) %in% c("012","013") ~ "Unifamiliar"),
-         f.tipolog = factor(f.tipolog))
-
-
-
-antig <-cut(datos$a_ant_bim,
-            breaks = c(min(datos$a_ant_bim, na.rm = TRUE),
-                       1960,1970,1980,1990,2000,2010,
-                       max(datos$a_ant_bim, na.rm = TRUE)),
-            right = TRUE,    #Intervalos cerrados por la izquierda
-            include.lowest = TRUE,  # Para que incluya el valor máximo
-            dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
-
-etiquetas <- c("Hasta 1960","1961 - 1970","1971 - 1980",
-               "1981 - 1990","1991 - 2000","2001 - 2010", "Desde 2011")
-
-datos <- datos %>% mutate(f.antig_bi = factor(antig, labels =etiquetas))
-
-########
-datos_poblacion_2022 <- read.csv("datos_aux/datos_poblacion_2022.txt", 
-                                 header= TRUE,
-                                 sep = ";",
-                                 colClasses = "character")
-
-datos_poblacion_2022$Valor = as.numeric(datos_poblacion_2022$Valor)
-
-pob_aux <- cut(datos_poblacion_2022$Valor,
-               breaks = c(min(datos_poblacion_2022$Valor),
-                          5000,10000,20000,50000,100000,500000,
-                          max(datos_poblacion_2022$Valor)),
-               right = FALSE,
-               include.lowest = TRUE,
-               dig.lab = 10)
-
-Etiquetas <- c("Menos de 5.000","5.000 - <10.000","10.000 - <20.000",
-               "20.000 - <50.000", "50.000 - <100.000", "100.000 - <500.000",
-               "500000 o más")
-
-datos_poblacion_2022 <- datos_poblacion_2022 %>% 
-  mutate(f.tam_pob = factor(pob_aux, labels = Etiquetas)) %>% 
-  select(CODIGO_INE3, f.tam_pob)
-
-datos <-  left_join(datos, 
-                    datos_poblacion_2022, 
-                    by = c("cod_ine" = "CODIGO_INE3") )
-
-#######
-
-
-datos <- datos %>% 
-  mutate(pota.jerarquia = factor(pota.jerarquia,
-                                 levels = c("Ciudad principal","Ciudad media 1", "Ciudad media 2",
-                                            "Centro rural o pequeña ciudad 1", "Centro rural o pequeña ciudad 2",
-                                            "Asentamiento cabecera municipal")))
-
-
-#   Constructo de Persona Física + Tipo Persona Jurídica 
-
-datos <- datos %>% 
-  mutate(f.persona_fj = ifelse(
-    tipo_persona_arrendador == "F", "Persona Física",as.character(tipo_entidad_arrendador)),
-    f.persona_fj = factor(f.persona_fj, levels = c("Persona Física", 
-                                                   unique(as.character(tipo_entidad_arrendador))))
-  )
-
-
-datos <- datos %>% 
-  mutate(calidad = factor(calidad,
-                          levels = c("C",as.character(seq(1,9,1)))))
-
-datos <- datos %>% 
-  mutate(h2o = ifelse(is.na(h2o),0,h2o),
-         h2o = factor(h2o, levels = c(0,1), labels = c("Sin", "Con")))
-
-
-
-datos <- datos %>% 
-  mutate(ea = ifelse(is.na(ea),0,ea),
-         ea = factor(ea, levels = c(0,1), labels = c("Sin", "Con")))
-
-datos <- datos %>% 
-  mutate(app = ifelse(is.na(app),0,app),
-         app = factor(app, levels = c(0,1), labels = c("Sí", "N")))
-
-
-
-
-
-
-###                        ################
 ####################   Superficie de la vivienda #### 
 
 Resumen_basico(datos$stotalocal_14)
@@ -2290,7 +2056,7 @@ print(tabla)
 
 # Veo el cruce de tipologia con calidad
 
-datos <- datos %>%  mutate(calidad = substr(categoria_const_14,5,5))
+
 table(datos$tip_const4d_14, datos$calidad)
 
 # aqui estaba la definicion de factores
@@ -2478,3 +2244,10 @@ ggplot(datos,
 
 
 #############              #######
+
+
+
+
+
+
+

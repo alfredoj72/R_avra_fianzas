@@ -1,6 +1,5 @@
-
 #################  INICIO    ################
-paquetes_necesarios = c("sf","tidyverse","flextable","ggplot2","tmap","leaflet") # c( "ggplot2","classInt") 
+paquetes_necesarios = c("sf","tidyverse","leaflet", "readxl") # c( "flextable","classInt") 
 for (paq in paquetes_necesarios){
   if (!(paq %in% rownames(installed.packages()))){
     install.packages(paq, dependencies = T)}
@@ -8,97 +7,46 @@ for (paq in paquetes_necesarios){
 }
 rm(paq, paquetes_necesarios)
 
-# parto
+# # Si voy a hacer mapas solo con datos de AVRA, sin los de catastro
+# # Al intentar hacer mapas con datos de catastro dará error
+# rm(list =ls())
+# load("./datos_output/avra_catastro_2022.RData")
+# datos <- avra_catastro_2022 ; rm(avra_catastro_2022)
+# avra_datos_originales <- datos[["originales"]]
+# # avra_catastro <- datos[["avra_catastro"]]
+# # tabla_frecuencias  <- datos[["tabla_frecuencias"]]
+# # tabla_frecuencias_final  <- datos[["tabla_frecuencias_final"]]
+# # Fianzas_casan_1_vivienda <- datos[["Fianzas_casan_1_vivienda"]]
+# # Fianzas_no_casan_catastro <- datos[["Fianzas_no_casan_catastro"]]
+# # Fianzas_casan_distintas_viviendas <- datos[["Fianzas_casan_distintas_viviendas"]]
+# # Fianzas_casan_distintas_viviendas_case <- datos[["Fianzas_casan_distintas_viviendas_case"]]
+# datos <- avra_datos_originales
+# 
+# rm(avra_datos_originales)
+
+
 rm(list =ls())
-load("./datos_output/avra_catastro_2022.RData")
-datos <- avra_catastro_2022 ; rm(avra_catastro_2022)
-avra_datos_originales <- datos[["originales"]]
-# avra_catastro <- datos[["avra_catastro"]]
-tabla_frecuencias  <- datos[["tabla_frecuencias"]]
-tabla_frecuencias_final  <- datos[["tabla_frecuencias_final"]]
-# Fianzas_casan_1_vivienda <- datos[["Fianzas_casan_1_vivienda"]]
-# Fianzas_no_casan_catastro <- datos[["Fianzas_no_casan_catastro"]]
-# Fianzas_casan_distintas_viviendas <- datos[["Fianzas_casan_distintas_viviendas"]]
-# Fianzas_casan_distintas_viviendas_case <- datos[["Fianzas_casan_distintas_viviendas_case"]]
-datos <- avra_datos_originales
-
-rm(avra_datos_originales, tabla_frecuencias, tabla_frecuencias_final)
-
-#### Cargar las capas y añadir datos   ####
-
-# ## Carga de capas shp ubicadas en directorio local
-#  provincia_sf <- st_read(dsn = "./capas_in/13_01_Provincia.shp")
-#  municipio_sf <- st_read(dsn = "./capas_in/13_01_TerminoMunicipal.shp")
-
-# Carga de capas servidas a través de servicios WFS
-# Especifica la URL del servicio WFS
-tipo <- "WFS"
-url_wfs <- "http://www.ideandalucia.es/services/DERA_g13_limites_administrativos/wfs?"
-peticion <- "request=GetCapabilities"
-orden <- paste(tipo,":",url_wfs,peticion, sep = "")
-
-# Obtén la lista de capas disponibles en el WFS
-capas_disponibles <- st_layers(orden)
-
-# Muestra la lista de capas
-print(capas_disponibles["name"])
-
-# # Añadir las capas indicando el nombre completo
-# name_capa <- "DERA_g13_limites_administrativos:g13_01_Provincia"
-# provincia_sf <- st_read(dsn = orden, layer = name_capa)
-#
-# name_capa <- "DERA_g13_limites_administrativos:g13_01_TerminoMunicipal"
-# municipio_sf <- st_read(dsn = orden, layer = name_capa)
-
-# Añadir las capas buscando texto dentro de su nombre
-# type = 6 devuelve geometría de tipo MULTIPOLYGON
-lista_capas <- capas_disponibles[[1]]
-name_provincia <- lista_capas[grepl("Provincia", lista_capas)]
-provincia_sf <- st_read(dsn = orden, layer = name_provincia, type = 6)
-
-name_municipio <- lista_capas[grepl("Municipal", lista_capas)]
-municipio_sf <- st_read(dsn = orden, layer = name_municipio, type = 6)
-
-# plot(provincia_sf)
-rm(tipo,url_wfs,peticion,orden,capas_disponibles,lista_capas,name_provincia,name_municipio)
-
-# # Simplificar los polígonos para acelerar los proceso
-# municipio_sf <- st_simplify(municipio_sf, dTolerance = 1)
-# provincia_sf <- st_simplify(provincia_sf, dTolerance = 1)
-# # No lo uso porque no veo diferencia de tiempo y sin embargo si se producen algunos
-# # cambios en el comportamiento de la capa ya que pasa de MULTIPOLYGON a GEOMETRY
-
-# Obtener resúmenes de datos para provincias y municipios
-
-datos_provincia <- datos %>%
-  group_by(provincia_806) %>%
-  summarise(casos = n(), .groups = "drop")
-
-datos_provincia <- datos_provincia %>% 
-  mutate(codigo = c("04","11","14","18","21","23","29","41"))
-
-datos_municipio <- datos %>%
-  group_by(codigo_ine) %>%
-  summarise(casos = n(), .groups = "drop")
-
-# Añadir los datos numéricos a las capas para poder representarlos en mapas
-
-provincia_sf <- provincia_sf %>% 
-  left_join (datos_provincia, by = c("codigo" = "codigo")) # %>% 
-# mutate(etiqueta = paste(provincia,"\n",casos))
+load("./datos_output/datos_para_analisis_2022.RData")
+datos <- datos_para_analisis_2022[["datos"]]
+datos <- st_drop_geometry(datos)
 
 
-municipio_sf <- municipio_sf %>% 
-  left_join (datos_municipio, by = c("cod_mun" = "codigo_ine"))   %>%
-  mutate(casos = coalesce(casos, 0))  #sustituye los NA por 0
+# Si no existe el archivo que contiene las capas con los atributos, lo crea
+if (!file.exists("datos_output/datos_para_mapas.Rdata")) {
+  source("Funciones.R")
+  # Ejecuta el script para crear las capas y añadir los campos
+  crea_capas_y_campos()
+} 
 
-save.image(file = "datos_para_mapas.Rdata")
+
+# Carga las capas
+load(file = "datos_output/datos_para_mapas.Rdata")
+
 
 
 ## Con leaflet ########
 
-rm(list =ls())
-load(file = "datos_para_mapas.Rdata")
+
 
 
 ########### CONTRUYENDO MAPAS CON LEAFLET DESDE 0, SIN PARTIR DE TMAP  #####
@@ -109,15 +57,15 @@ load(file = "datos_para_mapas.Rdata")
 
 # Tomo un punto central interior de cada provincia y municipio
 centro_provincia <- provincia_sf %>% 
-  mutate(point_within = st_point_on_surface(geom)) %>% 
+  mutate(point_within = st_point_on_surface(geometry)) %>% 
   as.data.frame() %>%  # Convierte a data.frame, los campos de geometria no tienen efect
-  select(-geom) %>%    # Elimina el campo con la geometría de polígonos
+  select(-geometry) %>%    # Elimina el campo con la geometría de polígonos
   st_as_sf()           # Genera geometría y la toma por defecto de point_within
 
 centro_municipio <- municipio_sf %>% 
-  mutate(point_within = st_point_on_surface(geom)) %>% 
+  mutate(point_within = st_point_on_surface(geometry)) %>% 
   as.data.frame() %>%  # Convierte a data.frame, los campos de geometria no tienen efecto
-  select(-geom) %>%    # Elimina el campo con la geometría de polígonos
+  select(-geometry) %>%    # Elimina el campo con la geometría de polígonos
   st_as_sf()           # Genera geometría y la toma por defecto de point_within
 
 
@@ -448,18 +396,12 @@ leaflet() %>%  # Creamos un objeto leaflet
 
 
 
-Hacer otro con 4 o 5 tamaños de bolas?
+# Hacer otro con 4 o 5 tamaños de bolas?
 # 
 
 
 
-
-
-
-
-
-
-
+# Hacer facet con mapas leaflet??? NO HACER, HACER UN SHINY app
 
 
 

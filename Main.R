@@ -10,22 +10,25 @@ rm(list = ls())
 
 # paquetes y directorio de trabajo ----
 #instala y carga los paquetes necesarios
-paquetes_necesarios = c("readxl","RPostgres","sf","tidyverse","writexl","glue") # c( "ggplot2","classInt") 
-for (paq in paquetes_necesarios){
-  if (!(paq %in% rownames(installed.packages()))){
-    install.packages(paq, dependencies = T)}
-  library(paq, character.only = T)
-}
-rm(paq, paquetes_necesarios)
+# paquetes_necesarios = c("readxl","RPostgres","sf","tidyverse","writexl","glue") # c( "ggplot2","classInt") 
+# for (paq in paquetes_necesarios){
+#   if (!(paq %in% rownames(installed.packages()))){
+#     install.packages(paq, dependencies = T)}
+#   library(paq, character.only = T)
+# }
+# rm(paq, paquetes_necesarios)
 
+# alternativa
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(readxl,RPostgres,sf,tidyverse,writexl,glue)
 
 #########################################################################
 
 # source("Funciones.R")
 # avra2018_2022 <- carga_datos_entrada()
-# save.image(file = "datos.Rdata")
+# save.image(file = "./datos_output/datos_avra.Rdata")
 
-load("datos.Rdata")
+load("./datos_output/datos_avra.Rdata")
 source("Funciones.R")
 
 #########################################################################
