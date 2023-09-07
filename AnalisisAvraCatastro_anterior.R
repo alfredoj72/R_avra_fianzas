@@ -1,4 +1,4 @@
-
+datos <- datos_para_analisis_2018[[1]]
 
 
 # busco incongruencias entre numero de habitaciones y superficie de vivienda
@@ -13,7 +13,15 @@ segmento_num_hab <- cut(datos$num_habitaciones,
 tabla_contingencia <- table(segmento_num_hab, segmento_superf)
 print(tabla_contingencia)
 
+tabla_contingencia %>% as.data.frame() %>% pivot_wider(names_from = segmento_superf,
+                                                       values_from = Freq) # %>% flextable()
+
+# Usar intervalos abiertos a la derecha y que incluya valores maximo y minimo
+# Añadir titulo, texto a cada eje, totales, porcentajes y adaptar a tema del resto del trabajo.
+
+
 min(datos$num_habitaciones, na.rm = TRUE)
+
 
 #hacer  grafica de superficie vivienda por cada 5 metros
 
@@ -21,7 +29,7 @@ min(datos$num_habitaciones, na.rm = TRUE)
 
 
 
-
+Q3 <- quantile(datos$stotalocal_14, 0.95)
 
 Altos <- datos %>%
   filter(stotalocal_14 >  Q3)
@@ -307,7 +315,7 @@ calculo_por_antiguedad <- datos %>%
 sum(calculo_por_antiguedad$casos, na.rm = TRUE)
 
 # Imprimir los resultados
-print(media_renta_m2)
+print(calculo_por_antiguedad)
 print(mediana_renta_m2)
 print(tabla_a_ant_bim)
 
@@ -391,30 +399,8 @@ datos <- datos %>%
          mutate(error_cod_municipio = ifelse(codigo_ine != cod_ine, 
                                              "No coincide",""))
 
-# Duracion de contrato
-summary(datos$duracion_contrato_años)
-boxplot(datos$duracion_contrato_años)
-densidad <- density(na.omit(datos$duracion_contrato_años))
-plot(densidad)
-hist(datos$duracion_contrato_años, breaks = 40)
-# Definir los intervalos o categorías para agrupar los valores numéricos
-intervalos <- cut(datos$duracion_contrato_años,
-                  breaks = c(0, 1, 2, 3, 4, 5, 6, 7, 40), include.lowest = TRUE)
-tabla_frecuencias <- table(intervalos)
-print(tabla_frecuencias)
-barplot(tabla_frecuencias)
 
 
-#Fecha de devengo
-Hmisc::describe(datos$fecha_devengo)
-#hay 365 fechas distintas
-Hmisc::describe(lubridate::year(datos$fecha_devengo))
-#Efectivamente todas las fecha de devengo son de 2022
-
-
-
-# tipo de arrendamiento 
-barplot(table(datos$tipo_de_arrendamiento))
 
 
 # tipo de actualizacion
@@ -466,18 +452,6 @@ kk <- datos %>%
   filter(rep_rc18 == 2 & rep_rc_2 == 1)
 # la referencia catastral 9590202VG4099B0025M es incorrecta, debe ser
 # 9590202VG4099B0025MA
-
-
-# Identificador de vivienda
-Hmisc::describe(datos$idvcat)
-#coincide en numero con los bienes inmuebles distintos
-
-# tipo de construccion
-Hmisc::describe(datos$tip_const4d_14)
-table(datos$tip_const4d_14)
-barplot(table(datos$tip_const4d_14))
-
-
 
 
 
@@ -602,8 +576,10 @@ crear_nuevos_campos <- function(vector) {
 # Obtener los nombres de las columnas a las que se les aplicará la función
 campos <- c("stotalocal_14", "importe_de_la_renta", "renta_m2")
 
+datos <- st_drop_geometry(datos)
 # Aplicar la función crear_nuevos_campos a los campos seleccionados de df usando lapply
 resultados <- lapply(datos[campos], crear_nuevos_campos)
+
 
 # Convertir los resultados en un nuevo data frame
 nuevos_campos <- as.data.frame(resultados)
@@ -750,6 +726,93 @@ en el chatgpt con hilos posteriores a New chat hay 7 hilos con cuestiones intere
 a desarrollar.
 
 
+quantile(datos$stotalocal_14, 0.95)
+
+sin_grandes <- datos %>% filter(datos$stotalocal_14 < 149)
+
+# #tipología de la construcción 
+# datos$tip_const4d_14 <- factor(datos$tip_const4d_14)
+# 
+# #Se repite o no la rc en avra
+# datos <- datos %>%
+#   mutate(rc_rep = factor(ifelse(avra_rc_repet == 1, "No Repite", "RC repite")))
+# 
+# #El edificio en que se encuentra la vivienda tiene o no división horizontal
+# datos <- datos %>% 
+#   mutate(div_hor = factor(ifelse(is.na(n_bi_sindh),"div hztal", "NO div hztal" )))
+# 
+# 
+# table(datos$tip_const4d_14, datos$rc_rep, datos$div_hor) 
+# 
+# 
+# grupo1 <- datos %>% filter(div_hor =="NO div hztal" & 
+#                              rc_rep =="RC repite" &
+#                              substr(tip_const4d_14, 1, 3) == "011" )
+# 
+# 
+# grupo2 <- datos %>% filter(div_hor =="NO div hztal" & 
+#                              rc_rep =="RC repite" &
+#                              (substr(tip_const4d_14, 1, 3) == "012" | 
+#                               substr(tip_const4d_14, 1, 3) == "013"  ))
+# 
+# grupo3 <- datos %>% filter(div_hor =="div hztal" & 
+#                              rc_rep =="RC repite" &
+#                              substr(tip_const4d_14, 1, 3) == "011" )
+# 
+# grupo4 <- datos %>% filter(div_hor =="div hztal" & 
+#                            rc_rep =="RC repite" &
+#                              (substr(tip_const4d_14, 1, 3) == "012" | 
+#                                 substr(tip_const4d_14, 1, 3) == "013"  ))
+# 
+# grupo5 <- datos %>% filter(rc_rep == "No Repite")
+# 
+
+
+
+
+
+Investigo rangos de renta_m2 en viviendas que tenga certeza que su superf es correcta y su precio tambien
+
+
+
+
+
+grupo1 <- datos %>% filter(n_bi > 1 & 
+                           avra_rc_repet == 1 &
+                           substr(tip_const4d_14, 1, 3) == "011" )
+
+
+
+
+
+# Bien inmeble con división horizontal o que IECA ha encontrado viviendas
+
+
+varios_bi <- datos %>% filter(n_bi > 1 | nviv >1)
+un_bi <- datos %>% filter(is.na(n_bi) & nviv == 1)
+
+
+datos <- varios_bi
+ggplot(datos, aes( x = importe_de_la_renta,
+                   y = stotalocal_14)) +
+  geom_point() +
+  labs(x = "Importe de la renta", y = "Superficie de vivienda" ,
+       color = "red")
+
+
+
+# He detectado viviendas que se ubican en parcelas en las que según los datos
+# del IECA existe más de un bien inmueble (y he mirado en la SEC que son viviendas
+# y sin embargo el campo nviv sale con valor 1
+kk <- datos %>% filter(n_bi>1 & !nviv >1) 
+
+
+
+datos %>% filter(n_bi>1) %>% count()
+
+kk <- datos %>% filter(n_bi>1 & nviv >1) %>% count()
+
+kk
 
 
 
@@ -761,7 +824,7 @@ a desarrollar.
 
 
 
-qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+
 
 
 
@@ -769,56 +832,4 @@ qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
 
 ################################################################
 # Algo de código sobre la identificación de intervalos para clasificar una variable
-# numérica
-# lo pruebo con la variable datos$stotalocal_14
-
-# idea
-# nbreaks <- pretty(range(kk), n = nclass.Sturges(kk),
-#                   min.n = 1)
-
-# Determinación del número de intervalos
-nclass.Sturges(datos$stotalocal_14)
-nclass.scott(datos$stotalocal_14)
-nclass.FD(datos$stotalocal_14)
-
-# Variable con los valores del número de intervalos
-num_intervalos <- 5:10
-
-# Vector para almacenar los resultados de tot.withinss
-tot_withinss <- numeric(length(num_intervalos))
-betweenss <- numeric(length(num_intervalos))
-
-variable <- datos$stotalocal_14
-df <- as.data.frame(variable)
-
-# Bucle para iterar sobre los diferentes números de intervalos
-for (i in 1:length(num_intervalos)) {
-  # Aplicar kmeans con el número de intervalos actual
-  kmeans_result <- kmeans(variable, centers = num_intervalos[i], nstart = 50)
-  
-  # Obtener los centroides de los grupos
-  centroides <- kmeans_result$centers
-  
-  # Obtener los grupos resultantes
-  grupos <- kmeans_result$cluster
-  
-  valores_maximos <- sapply(1:max(grupos), function(i) max(df[grupos == i, "variable"]))
-  valores_minimos <- sapply(1:max(grupos), function(i) min(df[grupos == i, "variable"]))
-  valores_medios <- (valores_maximos + valores_minimos) / 2
-  
-  # # Almacenar el valor de tot.withinss
-  # tot_withinss[i] <- kmeans_result$tot.withinss
-  # betweenss[i] <- kmeans_result$betweenss
-}
-
-# Imprimir los resultados
-results <- data.frame(Num_Intervalos = num_intervalos,
-                      Tot_Withinss = tot_withinss,
-                      Betweenss = betweenss,
-                      coef = tot_withinss / Betweenss)
-print(results)
-? cuales serían las marcas de clase de los intervalos obtenidos?
-  
-
-
-  
+# Usar el paquete questionr
