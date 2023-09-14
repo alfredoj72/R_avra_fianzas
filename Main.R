@@ -48,17 +48,17 @@ source("Funciones.R")
 # # los datos del catastro conectados, genera campos calculados, FILTRA los registros
 # # válidos para el análisis, añade campos de POTA y secciones censales y crea factores
 #
-load("./datos_output/avra_catastro_2022.RData")
-datos_para_analisis_2022 <- preparacion_datos(avra_catastro_2022)
-
-# Salva en el dirctorio datos_output la información
-# Salva en el dirctorio datos_output la información
-save(datos_para_analisis_2022,
-     file = "./datos_output/datos_para_analisis_2022.RData")
-write_xlsx(datos_para_analisis_2022[[1]],
-           glue("./datos_output/avra_catastro_2022_8_datos_para_analisis.xlsx"))
-write_xlsx(datos_para_analisis_2022[[2]],
-           glue("./datos_output/avra_catastro_2022_8b_resumen_del_filtrado.xlsx"))
+# load("./datos_output/avra_catastro_2022.RData")
+# datos_para_analisis_2022 <- preparacion_datos(avra_catastro_2022)
+# 
+# # Salva en el dirctorio datos_output la información
+# # Salva en el dirctorio datos_output la información
+# save(datos_para_analisis_2022,
+#      file = "./datos_output/datos_para_analisis_2022.RData")
+# write_xlsx(datos_para_analisis_2022[[1]],
+#            glue("./datos_output/avra_catastro_2022_8_datos_para_analisis.xlsx"))
+# write_xlsx(datos_para_analisis_2022[[2]],
+#            glue("./datos_output/avra_catastro_2022_8b_resumen_del_filtrado.xlsx"))
 
 
 
@@ -137,7 +137,28 @@ for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
  proceso_completo (anyo_sel)
  #print(anyo_sel)
 }
-  
+
+
+# Recopila los datos de todos los años y genera en df datos_analisis
+datos_analisis <- data.frame()
+for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
+  #browser()
+  file <- glue("./datos_output/datos_para_analisis_{anyo_sel}.RData")
+  load(file)
+  eval(parse(text = glue("contenedor <- datos_para_analisis_{anyo_sel}")))
+  aux <- contenedor[["datos"]] ;# print(nrow(aux))
+  if (nrow(datos_analisis) == 0 ) {
+    datos_analisis <- aux
+  } else {
+    datos_analisis <- bind_rows(datos_analisis,aux )
+  }
+}
+save(list = datos_analisis, 
+     file = "./datos_output/datos_para_analisis_todos.RData")
+
+#load(file = "./datos_output/datos_para_analisis_todos.RData")
+
+
 
 # Nota a meter en algun sitio
 # La superficie asignada a cada vivienda por el resumen de datos IECA Catastro

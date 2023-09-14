@@ -1,0 +1,89 @@
+---
+title: "Análisis estadistico de las Áreas de Rehabilitación de Andalucía"
+author: "Alfredo Martín"
+date: "Diciembre 2022"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float: true
+    theme: cerulean 
+---
+
+
+    
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE, 
+	fig.path = "Figs/",
+	message = FALSE,
+	warning = FALSE,
+	dpi = 300
+)
+# En los chunck de gáficos individuales puedo poner dpi = 400 y modificar tamaño
+# con fig.height = 6, 	fig.width = 10,
+
+```
+
+                      
+```{r carga_librerias, message=FALSE, include=FALSE}
+library(tidyverse)
+#library(dplyr)
+library(flextable)
+# Establezco parámetros por defecto para tablas
+init_flextable_defaults() #reinicia los valores por defecto del paq flextable
+set_flextable_defaults(
+  big.mark = ".",
+  decimal.mark = ",",
+  digits = 0,
+  # theme_fun = theme_box,
+  font.family = "calibri",  
+  line_spacing = .8,
+  font.color = "gray8", # "#333333",
+  font.size = 8,
+  border.color = "gray12", # "#333333",
+  padding = 4
+)
+#library(kableExtra)
+```
+
+```{r carga_datos, echo=FALSE, message=FALSE}
+# source("./CargaDatos.R")
+# source("./RealizaTest.R") 
+f <- paste0(getwd(), "/datos_elab/Datos_ARRU.RData" )
+f2 <- paste0(getwd(), "/datos_elab/Test_ARRU.RData" )
+load(f) ; load(f2) 
+rm(f, f2)
+
+to_num <- function(x){
+  formatC(x, format= "f", digits = 1, big.mark = ".", decimal.mark = ",")
+}
+
+# HACER UNA LLAMADA A LOS .R QUE GENERAN LOS DATOS Y LOS TEST
+#rm(ARRU_porcent, ARRU_unidades)
+```
+
+```{r llamada_planteamiento , child=c('01_planteamiento.Rmd')}
+```
+
+```#{r llamada_descriptivo , child=c('02_descriptivo.Rmd')}
+```
+
+```#{r llamada_conceptos , child=c('03_conceptos_previos.Rmd')}
+```
+
+```#{r llamada_test , child=c('04_test.Rmd')}
+```
+
+```#{r llamada_sintesis , child=c('05_sintesis.Rmd')}
+```  
+
+```#{r llamada_residuos , child=c('06_residuos.Rmd')}
+```
+
+```#{r llamada_sintesis , child=c('0z_opcional.Rmd')}
+```
+
+<-- procede de Q:\Inspeccion\_TRABAJOS\133 Datos estadísticos ARRU\Analisis\
+-->

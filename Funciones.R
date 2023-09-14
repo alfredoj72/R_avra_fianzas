@@ -1476,13 +1476,13 @@ preparacion_datos <- function(datos_entrada){
   
   superf <-cut(datos$stotalocal_14,
                breaks = c(min(datos$stotalocal_14, na.rm = TRUE),
-                          45,65,85,105,150,max(datos$stotalocal_14, na.rm = TRUE)),
+                          45,65,85,105,120,150,max(datos$stotalocal_14, na.rm = TRUE)),
                right = FALSE,    #Intervalos cerrados por la izquierda
                include.lowest = TRUE,  # Para que incluya el valor máximo
                dig.lab = 10)  #dígitos usados sin que se muestren en formato científico
   
   etiquetas <- c("Hasta 45","45 - <65","65 - <85",
-                 "85 - <105","105 - <150","150 o más")
+                 "85 - <105","105 - <120", "120 - <150","150 o más")
   
   datos <- datos %>% mutate(f.super = factor(superf, labels =etiquetas))
   
