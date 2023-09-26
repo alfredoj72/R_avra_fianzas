@@ -1144,6 +1144,7 @@ salva_tablas_avra_catastro_alt <- function(datos, anyo) {
 # Usa solo los registros que casan con 1 vivienda
 # Elimina los registros considerados errores
 
+
 preparacion_datos <- function(datos_entrada){
   datos <- datos_entrada[["Fianzas_casan_1_vivienda"]]
   
@@ -1187,7 +1188,7 @@ preparacion_datos <- function(datos_entrada){
   
   # Alquileres que corresponden a Referencias Catastrales que se repiten
   # Si una referencia catastral se repite es porque se ha alquilado más de una
-  # ven en un año o porque en realidad la referencia catastral corresponde
+  # vez en un año o porque en realidad la referencia catastral corresponde
   # a un bien inmueble que contiene muchas viviendas no separadas individualmente
   
   # Tras un análisis considerando los factores:
@@ -1195,7 +1196,7 @@ preparacion_datos <- function(datos_entrada){
   # * existe o no división horizontal 
   # * tipología de vivienda
   
-  # Decido eliminar del estudio (1/2):
+  # Decido eliminar del estudio (parte 1/2):
   # Cuando se repite la ref cat  y no hay división horizontal elimino todos los 
   # registros en los que tampoco el IECA ha encontrado viviendas ( o dicho de otra
   # forma, salvo aquellos en los que el IECA ha detectado la existencia de más de 
@@ -1210,7 +1211,7 @@ preparacion_datos <- function(datos_entrada){
   datos <- datos %>% 
     filter(!(avra_rc_repet > 1 & n_bi == 1 & nviv == 1))
   
-  # Decido eliminar del estudio (2/2):
+  # Decido eliminar del estudio (parte 2/2):
   # Cuando se repite la ref cat, hay división horizontal y la tipología de 
   # vivienda es colectiva y sin embargo el número de viviendas es 1 (es decir, 
   # aunque hay división horizontal solo se ha detectado una vivienda y el resto es
@@ -1232,11 +1233,11 @@ preparacion_datos <- function(datos_entrada){
                nviv == 1))
   
   # Los siguientes filtros se deben a combinaciones de calidad, tamaño y renta/m2
-  # que se entienden muy poco probables y en consecuencia se piesna que la referencia
+  # que se entienden muy poco probables y en consecuencia se piensa que la referencia
   # catastral recogida contiene más elementos del que realmente se alquila
-  Q05 <- quantile(datos$renta_m2, 0.05, na.rm = TRUE)
-  Q025 <- quantile(datos$renta_m2, 0.025, na.rm = TRUE)
-  Q95 <- quantile(datos$renta_m2, 0.95, na.rm = TRUE)
+  Q05 <- quantile(datos$renta_m2, 0.05, na.rm = TRUE, type = 4)
+  Q025 <- quantile(datos$renta_m2, 0.025, na.rm = TRUE, type = 4)
+  Q95 <- quantile(datos$renta_m2, 0.95, na.rm = TRUE, type = 4)
   
   # pongo el límite de 150 porque entiendo que en viviendas de dicho tamaño 
   # es muy poco probable el alquiler social y sin embargo el precio renta_m2 
@@ -1288,6 +1289,7 @@ preparacion_datos <- function(datos_entrada){
   
   rm( borrados1, borrados2, borrados3, borrados4, borrados5, borrados6, borrados7)
   
+  #browser()
   # INCORPORACIÓN DE INFORMACIÓN DE ADSCRIPCIÓN DE CADA MUNICIPIO A 
   # LA ESTRUCTURA DEL POTA
   # Se añaden los campos que indican la jerarquía del municipio y
@@ -1328,42 +1330,35 @@ preparacion_datos <- function(datos_entrada){
   # INCORPORACIÓN DE INFORMACIÓN DEL BARRIO Y LA SECCION EN LA QUE SE ENCUENTRA
   # CADA VIVIENDA  
   
-  # Se añaden los campos nombre del barrio y nombre del distrito de la capa de barrios
+  # Se añaden los campos codigo y nombre del barrio y nombre del distrito de la capa de barrios
   # Según el IECA la capa de Barrios contiene una delimitación aproximada de los
   # Distritos y Barrios de las grandes ciudades andaluzas
   # Tambien se añade el codigo de sección censal de la capa de secciones censales
   # que si recoge todos los municipios de Andalucia
   # Además se define el campo como factor tanto las secciones como los distritos
   # para que aunque alguna no tenga casos aparezca en los listados
+  # Si no existe el archivo que contiene las capas con los atributos, lo crea
+
+  if (!file.exists(here("datos_output","capas_para_mapas.Rdata"))) {
+    source("Funciones.R")
+    # Ejecuta el script para crear las capas 
+    Pasar_capas_shp_a_R()
+    } 
   
+  # Carga las capas
+  load(file = here("datos_output","capas_para_mapas.Rdata"))
   
-  # Leer los shapefiles
-  Barrios_sf <- st_read(dsn = "datos_aux/13_24_BarrioUrbano.shp", quiet = TRUE)
-  Secciones_sf <- st_read(dsn = "datos_aux/13_27_SeccionCensal.shp", quiet = TRUE)
+  barrios_sf <- barrios_sf %>% select (barrio.cod_ine, 
+                                       barrio.codigo, 
+                                       barrio.nombre,
+                                       barrio.distrito)
+  secciones_sf <- secciones_sf %>%  select(seccion.codigo,
+                                           seccion.distrito)
   
-  Barrios_sf <- Barrios_sf %>% 
-    mutate(barrio.codigo = paste(cod_mun, nombre),
-           barrio.nombre = nombre,
-           barrio.distrito = distrito) %>% 
-    select(barrio.codigo,barrio.nombre, barrio.distrito)
+  datos <- st_join(datos, barrios_sf)
+  datos <- st_join(datos, secciones_sf)
   
-  Secciones_sf <- Secciones_sf %>% 
-    mutate(seccion.codigo = codigo,
-           seccion.distrito = substr(codigo,1,7)) %>% 
-    select(seccion.codigo, seccion.distrito)
-  
-  datos <- st_join(datos, Barrios_sf)
-  datos <- st_join(datos, Secciones_sf)
-  
-  # datos <- datos %>% 
-  #   mutate( barrio.codigo = factor(barrio.codigo),
-  #           barrio.nombre = factor(barrio.nombre),
-  #           barrio.distrito = factor(barrio.distrito),
-  #           seccion.codigo = factor(seccion.codigo),
-  #           seccion.distrito = factor(seccion.distrito))
-  
-  rm(Barrios_sf, Secciones_sf)
-  
+ 
 # definición de factores
 
   ######## DEFINICION DE FACTORES ############
@@ -1387,22 +1382,38 @@ preparacion_datos <- function(datos_entrada){
   # Leo los municipios de la capa de municipios de datos_aux. En los script de 
   # creación de mapas leo los datos de WMF. Aquí lo hago distinto.
   
-  
-  Municipios_sf <- st_read(dsn = "datos_aux/13_01_TerminoMunicipal.shp", quiet = TRUE)
-  Municipios <- st_drop_geometry(Municipios_sf) %>% 
+  # Aqui poner la creación del factor a partir de una tabla de municipios del IECA
+  # en vez de hacerlo desde la capa
+  #browser()
+  Municipios <- st_drop_geometry(municipio_sf) %>% 
+    arrange(provincia, nombre) %>% 
     select(cod_mun, nombre) %>% 
     distinct(cod_mun, nombre)
   
-  datos <- datos %>% 
-    mutate(cod_ine = factor(cod_ine, levels = Municipios$cod_mun)
-    )
-  
   datos <- left_join(datos, 
                      Municipios,
-                     by = c("cod_ine" = "cod_mun"))   
-    
-  rm(Municipios_sf, Municipios)
+                     by = c("cod_ine" = "cod_mun"))  
+  
+  datos <- datos %>% 
+    mutate(cod_ine = factor(cod_ine, levels = Municipios$cod_mun),
+           nombre= factor(nombre, levels = Municipios$nombre)
+    )
+ 
+  #browser()  
+  #rm(Municipios_sf, Municipios)
+  
 
+  
+  #Creo factor con todos los barrios
+  # barrios <- barrios_sf %>% 
+  #       st_drop_geometry(barrios_sf)
+  # 
+  # datos <- datos %>% 
+  #   mutate(barrio.codigo = factor(barrio.codigo, levels = barrios$barrio.codigo)
+  #   )
+  # 
+  # rm(barrios_sf, barrios)
+  
   datos <- datos %>%
     #mutate (tipo_persona_arrendador = replace_na(tipo_persona_arrendador,"NEspec")) %>% # no hay casos
     mutate (tipo_persona_arrendador = factor(tipo_persona_arrendador, 
@@ -1562,7 +1573,7 @@ preparacion_datos <- function(datos_entrada){
   
   datos <-  left_join(datos, 
                       datos_poblacion_2022, 
-                      by = c("cod_ine" = "CODIGO_INE3") )
+                      by = c("codigo_ine" = "CODIGO_INE3") )
   
   #######
   
@@ -1609,23 +1620,15 @@ preparacion_datos <- function(datos_entrada){
   
   
   
-  datos <- datos %>%
-    mutate (sexo_arrendador = factor(sexo_arrendador),
-            tipo_persona_arrendador = factor(tipo_persona_arrendador),
-            tipo_entidad_arrendador = factor(tipo_entidad_arrendador),
-            sexo_arrendatario = factor(sexo_arrendatario),
-            nacionalidad_arrendatario = factor(nacionalidad_arrendatario),
-            municipio_806 = factor(municipio_806),
-            provincia_806 = factor(provincia_806),
-            cod_postal_806 = factor(cod_postal_806),
-            tipo_de_arrendamiento = factor(tipo_de_arrendamiento),
-            tip_const4d_14 = factor(tip_const4d_14),
-            cod_ine = factor(cod_ine),
-            tipviv = factor(tipviv),
-            seccion.codigo = factor(seccion.codigo),
-            pota.unidad_territorial = factor(pota.unidad_territorial),
-            barrio.nombre = factor(barrio.nombre),
-            barrio.distrito = factor(barrio.distrito))
+  # datos <- datos %>%
+  #   mutate (municipio_806 = factor(municipio_806),
+  #           cod_postal_806 = factor(cod_postal_806),
+  #           tip_const4d_14 = factor(tip_const4d_14),
+  #           cod_ine = factor(cod_ine),
+  #           tipviv = factor(tipviv),
+  #           seccion.codigo = factor(seccion.codigo),
+  #           barrio.nombre = factor(barrio.nombre),
+  #           barrio.distrito = factor(barrio.distrito))
   
   # Añado a los resultados la tabla con todo el proceso, el resumen de datos borrados
   # y la tabla de datos originales
@@ -1637,115 +1640,25 @@ preparacion_datos <- function(datos_entrada){
 }
 
 
-############### FUNCION CARGAR CAPAS Y AÑADIR CAMPOS  ########################
 
-crea_capas_y_campos <- function(){
-  # Cargar las capas y añadir datos   
+#> ############## FUNCION CARGAR CAPAS Y AÑADIR CAMPOS  ########################
+#> Lee la información de las capas shape de provincias, municipios, barrios y
+#> secciones. Se renombra los campos de dichas capas y se queda solo con los
+#> códigos de identificación. A continuación crea las capas de unión de barrios,
+#> distritos censales y unidades del pota.
+#> También genera una datos básicos de resumen para cada capa y añade dichos 
+#> campos a las capas
+cargar_capas_y_añadir_campos <- function(){
   
-  # # Carga de capas servidas a través de servicios WFS
-  # # Especifica la URL del servicio WFS
-  # tipo <- "WFS"
-  # url_wfs <- "http://www.ideandalucia.es/services/DERA_g13_limites_administrativos/wfs?"
-  # peticion <- "request=GetCapabilities"
-  # orden <- paste(tipo,":",url_wfs,peticion, sep = "")
-  # 
-  # # Obtén la lista de capas disponibles en el WFS
-  # capas_disponibles <- st_layers(orden)
-  # 
-  # # Muestra la lista de capas
-  # print(capas_disponibles["name"])
-  # 
-  # # # Añadir las capas indicando el nombre completo
-  # # name_capa <- "DERA_g13_limites_administrativos:g13_01_Provincia"
-  # # provincia_sf <- st_read(dsn = orden, layer = name_capa)
-  # #
-  # # name_capa <- "DERA_g13_limites_administrativos:g13_01_TerminoMunicipal"
-  # # municipio_sf <- st_read(dsn = orden, layer = name_capa)
-  # 
-  # # Añadir las capas buscando texto dentro de su nombre
-  # # type = 6 devuelve geometría de tipo MULTIPOLYGON
-  # lista_capas <- capas_disponibles[[1]]
-  # name <- lista_capas[grepl("Provincia", lista_capas)]
-  # provincia_sf <- st_read(dsn = orden, layer = name, type = 6)
-  # 
-  # name <- lista_capas[grepl("Municipal", lista_capas)]
-  # municipio_sf <- st_read(dsn = orden, layer = name, type = 6)
-  # 
-  # name <- lista_capas[grepl("UnidadPOTA", lista_capas)]
-  # POTA_sf <- st_read(dsn = orden, layer = name, type = 6)
+  if (!file.exists(here("datos_output","capas_para_mapas.Rdata"))) {
+    source("Funciones.R")
+    # Ejecuta el script para crear las capas 
+    Pasar_capas_shp_a_R()
+  } 
+  # Carga las capas
+  load(file = here("datos_output","capas_para_mapas.Rdata"))
   
 
-  # Leer capas en formato shapefiles 
-  # ## Carga de capas shp ubicadas en directorio local
-  provincia_sf <- st_read(dsn = "./capas_in/13_01_Provincia.shp", quiet = TRUE)
-  
-  municipio_sf <- st_read(dsn = "./capas_in/13_01_TerminoMunicipal.shp", quiet = TRUE)
-  barrios_sf <- st_read(dsn = "capas_in/13_24_BarrioUrbano.shp", quiet = TRUE)
-  secciones_sf <- st_read(dsn = "capas_in/13_27_SeccionCensal.shp", quiet = TRUE)
-  
-  secciones_sf <- secciones_sf %>% mutate(distrito = substr(codigo,1,7) )
-  
-  # añado un campo identificador a la capa de barrios que no lo tiene
-  barrios_sf$barrio.codigo <- paste(barrios_sf$cod_mun, barrios_sf$nombre)
-  
-  # hago un "dissolve" de barrios atendiendo al distrito
-  # y añado cod_mun y municipio para que la capa resultado contenga dichos campos
-  barrios_union_sf <- barrios_sf %>% 
-           group_by(distrito, cod_mun, municipio) %>%
-           summarize(.groups = "drop") 
-  
-  distritos_sf <- secciones_sf %>%
-           group_by(distrito, cod_mun, municipio ) %>%
-           summarize(.groups = "drop") 
-  
-  # La capa del POTA no tiene un campo código y los nombres de los ambitos
-  # territoriales no coinciden con los del dataframe datos que procede de la 
-  # tabla de adscripciones de municipios al POTA.
-  # Por tanto si agrupo la información de los alquileres atendiendo al campo
-  # nombre de la unidad territorial no lo puedo casar con la capa.
-  # Es decir, no me sirve la capa de unidades del POTA del DERA. Tengo que
-  # construirme una capa de unidades POTA con los nombres de unidades territoriales
-  # que tengo en datos, para ello hago un "dissolve" de los municipios
-  # En R, el dissolve se consigue simplemente agrupando en un objeto de tipo sf
-  
-  
-  # obtengo la tabla de municipios con la adscripción al pota
-  adsc_mun <- read_excel("datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
-                         sheet = "adscripcion municipios",
-                         col_types = rep("text", times = 11))
-  campos <- tolower(colnames(adsc_mun))
-  campos <- gsub(" ", "_", campos)
-  colnames(adsc_mun) <- campos
-  
-  #Añade un cero y se queda con los 5 últimos dígitos
-  codigo <- paste0("0",adsc_mun$codigo_municipal)
-  codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
-  
-  adsc_mun <- adsc_mun %>% 
-    mutate(codigo_municipal = codigo,
-           pota.jerarquia = jerarquía_sistema_ciudades,
-           pota.unidad_territorial = unidad_territorial) %>% 
-    filter(!is.na(provincia)) %>% 
-    select(codigo_municipal, pota.jerarquia, pota.unidad_territorial)
-  
-  # añado a los municipios la información de adscripción al POTA  
-  municipio_sf <-  left_join(municipio_sf, 
-                             adsc_mun, 
-                             by = c("cod_mun" = "codigo_municipal") )
-  
-  rm(campos, codigo)
-  
-  # disuelvo los municipios un unidades territoriales del POTA
-  POTA_sf <- municipio_sf %>% group_by(pota.unidad_territorial) %>% summarize() 
-  
-  
-  # plot(provincia_sf)
-  
-  # # Simplificar los polígonos para acelerar los proceso
-  # municipio_sf <- st_simplify(municipio_sf, dTolerance = 1)
-  # provincia_sf <- st_simplify(provincia_sf, dTolerance = 1)
-  # # No lo uso porque no veo diferencia de tiempo y sin embargo si se producen algunos
-  # # cambios en el comportamiento de la capa ya que pasa de MULTIPOLYGON a GEOMETRY
   
   # Obtener resúmenes de datos para todos los niveles de información
 
@@ -1776,7 +1689,7 @@ crea_capas_y_campos <- function(){
               mediana_superf = median(stotalocal_14),
               .groups = "drop")
 
-  browser()
+  #browser()
   
   datos_barrios <- datos %>%
     group_by(barrio.codigo) %>%
@@ -1862,17 +1775,17 @@ crea_capas_y_campos <- function(){
     mutate(casos = coalesce(casos, 0)) 
   
   secciones_sf <- secciones_sf %>% 
-    left_join (datos_secciones, by = c("codigo" = "seccion.codigo"))%>%
+    left_join (datos_secciones, by = c("seccion.codigo" = "seccion.codigo"))%>%
     mutate(casos = coalesce(casos, 0)) 
   
   
   
-  barrios_union_sf <- barrios_union_sf %>% 
+  union_barrios_sf <- union_barrios_sf %>% 
     left_join (datos_barrios_union, by = c("distrito" = "barrio.distrito"))%>%
     mutate(casos = coalesce(casos, 0)) 
   
   distritos_sf <- distritos_sf %>% 
-    left_join (datos_distrito, by = c("distrito" = "seccion.distrito"))%>%
+    left_join (datos_distrito, by = c("seccion.distrito" = "seccion.distrito"))%>%
     mutate(casos = coalesce(casos, 0)) 
   
   
@@ -1881,10 +1794,118 @@ crea_capas_y_campos <- function(){
   
   
   save(provincia_sf, municipio_sf, POTA_sf, barrios_sf,
-       secciones_sf, barrios_union_sf, distritos_sf,
-       file = "datos_output/datos_para_mapas.Rdata")
+       secciones_sf, union_barrios_sf, distritos_sf,
+       file = "datos_output/capas_con_datos_para_mapas.Rdata")
   
 }
 
 
+#> ############## FUNCION PARA CARGAR CAPAS   ########################
+#> Lee la información de las capas shape de provincias, municipios, barrios y
+#> secciones. Se renombra los campos de dichas capas y se queda solo con los
+#> códigos de identificación. A continuación crea las capas de unión de barrios,
+#> distritos censales y unidades del pota.
 
+Pasar_capas_shp_a_R <- function(){
+  # Leer capas en formato shapefiles 
+  # ## Carga de capas shp ubicadas en directorio local
+  provincia_sf <- st_read(dsn = "./datos_aux/13_01_Provincia.shp", quiet = TRUE)
+  municipio_sf <- st_read(dsn = "./datos_aux/13_01_TerminoMunicipal.shp", quiet = TRUE)
+  
+  barrios_sf <- st_read(dsn = "./datos_aux/13_24_BarrioUrbano.shp", quiet = TRUE)
+  
+  # añado un campo identificador a la capa de barrios que no lo tiene
+  barrios_sf <- barrios_sf %>% 
+    group_by(cod_mun, municipio, nombre, distrito ) %>% 
+    summarize(.groups = "drop") %>% 
+    mutate(barrio.codigo = row_number(),
+           barrio.cod_ine = cod_mun,
+           barrio.nombre = nombre,
+           barrio.distrito = distrito) %>% 
+    select(cod_mun, municipio, barrio.cod_ine, barrio.codigo,
+           barrio.nombre, barrio.distrito)
+  
+  # Añade al nombre del barrio el del distrito en aquellos casos que hay 2
+  # barrios con el mismo nombre pero distinto distrito
+  barrios_sf <- barrios_sf %>% 
+    group_by(cod_mun, barrio.nombre) %>% 
+    mutate(rep = n(),
+           barrio.nombre = ifelse(rep > 1, 
+                                  paste0(barrio.nombre,". ", barrio.distrito),
+                                  barrio.nombre),
+           rep = NULL
+    ) %>% 
+    ungroup()
+  
+  # hago un "dissolve" de barrios atendiendo al distrito
+  # y añado cod_mun y municipio para que la capa resultado contenga dichos campos
+  union_barrios_sf <- barrios_sf %>% 
+    group_by(barrio.distrito, cod_mun, municipio) %>%
+    summarize(.groups = "drop") 
+  
+  
+  secciones_sf <- st_read(dsn = "./datos_aux/13_27_SeccionCensal.shp", quiet = TRUE)
+  
+  secciones_sf <- secciones_sf %>% 
+    mutate(seccion.codigo = codigo,
+           seccion.distrito = substr(codigo,1,7)) %>% 
+    select(cod_mun, municipio, seccion.codigo, seccion.distrito)
+  
+  distritos_sf <- secciones_sf %>%
+    group_by(seccion.distrito, cod_mun, municipio ) %>%
+    summarize(.groups = "drop") 
+  
+  # La capa del POTA no tiene un campo código y los nombres de los ambitos
+  # territoriales no coinciden con los del dataframe datos que procede de la 
+  # tabla de adscripciones de municipios al POTA.
+  # Por tanto si agrupo la información de los alquileres atendiendo al campo
+  # nombre de la unidad territorial no lo puedo casar con la capa.
+  # Es decir, no me sirve la capa de unidades del POTA del DERA. Tengo que
+  # construirme una capa de unidades POTA con los nombres de unidades territoriales
+  # que tengo en datos, para ello hago un "dissolve" de los municipios
+  # En R, el dissolve se consigue simplemente agrupando en un objeto de tipo sf
+  
+  
+  # obtengo la tabla de municipios con la adscripción al pota
+  adsc_mun <- read_excel("datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
+                         sheet = "adscripcion municipios",
+                         col_types = rep("text", times = 11))
+  campos <- tolower(colnames(adsc_mun))
+  campos <- gsub(" ", "_", campos)
+  colnames(adsc_mun) <- campos
+  
+  #Añade un cero y se queda con los 5 últimos dígitos
+  codigo <- paste0("0",adsc_mun$codigo_municipal)
+  codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
+  
+  adsc_mun <- adsc_mun %>% 
+    mutate(codigo_municipal = codigo,
+           pota.jerarquia = jerarquía_sistema_ciudades,
+           pota.unidad_territorial = unidad_territorial) %>% 
+    filter(!is.na(provincia)) %>% 
+    select(codigo_municipal, pota.jerarquia, pota.unidad_territorial)
+  
+  # añado a los municipios la información de adscripción al POTA  
+  municipio_sf <-  left_join(municipio_sf, 
+                             adsc_mun, 
+                             by = c("cod_mun" = "codigo_municipal") )
+  
+  rm(campos, codigo)
+  
+  # disuelvo los municipios un unidades territoriales del POTA
+  POTA_sf <- municipio_sf %>% group_by(pota.unidad_territorial) %>% summarize() 
+  
+  # plot(provincia_sf)
+  
+  # # Simplificar los polígonos para acelerar los proceso
+  # municipio_sf <- st_simplify(municipio_sf, dTolerance = 1)
+  # provincia_sf <- st_simplify(provincia_sf, dTolerance = 1)
+  # # No lo uso porque no veo diferencia de tiempo y sin embargo si se producen algunos
+  # # cambios en el comportamiento de la capa ya que pasa de MULTIPOLYGON a GEOMETRY
+
+  
+  save(provincia_sf, municipio_sf, POTA_sf, barrios_sf,
+       secciones_sf, union_barrios_sf, distritos_sf,
+       file = here("datos_output","capas_para_mapas.Rdata"))
+  
+}

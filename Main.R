@@ -20,7 +20,7 @@ rm(list = ls())
 
 # alternativa
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(readxl,RPostgres,sf,tidyverse,writexl,glue)
+pacman::p_load(readxl,RPostgres,sf,tidyverse,writexl,glue,here)
 
 #########################################################################
 
@@ -139,11 +139,96 @@ for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
 }
 
 
-# Recopila los datos de todos los años y genera en df datos_analisis
+
+
+
+
+
+
+
+
+
+#>Hace el proceso completo salvo la primera parte de conexión de los datos con 
+#>catastro
+
+proceso_completo_auxiliar <- function(anyo_sel) {
+  print(glue("Procesando año {anyo_sel}"))
+  
+  load(file = glue("./datos_output/avra_catastro_{anyo_sel}.RData"))
+  
+  # Prepara para el análisis, solo con la tabla de vivendas del registro con
+  # los datos del catastro conectados, genera campos calculados, FILTRA los registros
+  # válidos para el análisis, añade campos de POTA y secciones censales y crea factores
+  avra_catastro_anyo <- get(glue("avra_catastro_{anyo_sel}"))
+  datos_para_analisis_anyo <- preparacion_datos(avra_catastro_anyo)
+  
+  # Salva en el directorio datos_output la información
+  nombre_df <- glue("datos_para_analisis_{anyo_sel}")
+  assign(nombre_df, datos_para_analisis_anyo )
+  save(list = nombre_df, file = glue("./datos_output/datos_para_analisis_{anyo_sel}.RData"))
+  
+  write_xlsx(datos_para_analisis_anyo[[1]], 
+             glue("./datos_output/avra_catastro_{anyo_sel}_8_datos_para_analisis.xlsx"))
+  write_xlsx(datos_para_analisis_anyo[[2]], 
+             glue("./datos_output/avra_catastro_{anyo_sel}_8b_resumen_del_filtrado.xlsx"))
+  
+  
+  #Lee los dataframes construidos
+  # load(file = glue("./datos_output/avra_catastro_{anyo_sel}.RData"))
+  # load(file = glue("./datos_output/datos_para_analisis_{anyo_sel}.RData"))
+}
+
+for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
+  proceso_completo_auxiliar(anyo_sel)
+  #print(anyo_sel)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+# # Recopila los datos de todos los años y genera un df datos_analisis
 datos_analisis <- data.frame()
 for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
   #browser()
-  file <- glue("./datos_output/datos_para_analisis_{anyo_sel}.RData")
+  print(glue("Procesando año {anyo_sel}"))
+  #file <- glue("./datos_output/datos_para_analisis_{anyo_sel}.RData")
+  file <- here("datos_output",glue("datos_para_analisis_{anyo_sel}.RData"))
   load(file)
   eval(parse(text = glue("contenedor <- datos_para_analisis_{anyo_sel}")))
   aux <- contenedor[["datos"]] ;# print(nrow(aux))
@@ -153,10 +238,57 @@ for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
     datos_analisis <- bind_rows(datos_analisis,aux )
   }
 }
-save(list = datos_analisis, 
+
+datos_analisis <- datos_analisis %>% 
+  mutate(anyo = lubridate::year(datos_analisis$fecha_devengo)) %>% 
+  relocate(anyo, .before = 1)
+
+save(datos_analisis, 
      file = "./datos_output/datos_para_analisis_todos.RData")
 
 #load(file = "./datos_output/datos_para_analisis_todos.RData")
+
+
+################################################################################
+# # Elabora el documento Publicacion analisis exploratorio
+
+library(rmarkdown)
+
+# Ruta al archivo Rmd 
+ruta_archivo_rmd <- "./Publicacion analisis exploratorio/Genera_informe_MsWord.Rmd"
+
+# Ruta de salida para el documento generado
+ruta_salida <- "./Publicacion analisis exploratorio/Informe Analisis Exploratorio/"
+
+# Parámetros 
+params <- list(anyoID = "2022")
+
+# Renderiza el archivo Rmd con los parámetros
+render(input = ruta_archivo_rmd, 
+       output_format = "html_document", 
+       output_file = ruta_salida, 
+       params = params)
+
+
+# Para hacer todos los informes
+
+# Ruta al archivo Rmd 
+ruta_archivo_rmd <- "./Publicacion analisis exploratorio/Genera_informe_MsWord.Rmd"
+# Ruta de salida para el documento generado
+ruta_salida <- "./Publicacion analisis exploratorio/Informe Analisis Exploratorio/"
+for (anyo_sel in seq(2018,2022, 1)){ 
+  # Parámetros 
+  params <- list(anyoID = anyo_sel)
+  
+  # Renderiza el archivo Rmd con los parámetros
+  render(input = ruta_archivo_rmd, 
+         output_format = "html_document", 
+         output_file = ruta_salida, 
+         params = params)
+}
+
+
+
 
 
 

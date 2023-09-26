@@ -1,9 +1,11 @@
 
 # Realiza un analisis descriptivo de las variables.
+# Este documentos sirve de base para generar el informe de analisis exploratorio
+# Este fichero antes se llamó AnalisisDatosAvraCatastro.R
 
 #################  INICIO    ################
 
-paquetes_necesarios = c("sf","tidyverse","flextable","tmap","readxl","glue") # c( "ggplot2","classInt") 
+paquetes_necesarios = c("sf","tidyverse","flextable","readxl","glue") # c("tmap", "ggplot2","classInt") 
 for (paq in paquetes_necesarios){
   if (!(paq %in% rownames(installed.packages()))){
     install.packages(paq, dependencies = T)}
@@ -118,7 +120,7 @@ get_numeric_description <- function(column) {
     mode = Mode(column),
     IQR = IQR(column, na.rm = TRUE),
     sd = sd(column),
-    deciles <- quantile(na.omit(column), probs = seq(0.1, 0.9, by = 0.1)),
+    deciles <- quantile(na.omit(column), probs = seq(0.1, 0.9, by = 0.1), type = 4),
     num_na = sum(is.na(column))
   )
   return(result)
@@ -188,7 +190,7 @@ get_numeric_description <- function(column) {
     mode = Mode(column),
     IQR = IQR(column, na.rm = TRUE),
     sd = sd(column),
-    deciles = quantile(na.omit(column), probs = seq(0.1, 0.9, by = 0.1)),
+    deciles = quantile(na.omit(column), probs = seq(0.1, 0.9, by = 0.1), type = 4),
     num_na = sum(is.na(column))
   )
   return(result)
@@ -548,7 +550,7 @@ tabla_frecuencias_final %>%
   border_remove() %>% 
   #align(align = "center", j = 1, part = "all") %>% 
   hline(part = "header", i = 1, border = border_style1)   %>%
-  hline(part = "body", i = nrow(tabla_frecuencias)-1, border = border_style2) 
+  hline(part = "body", i = nrow(tabla_frecuencias_final)-1, border = border_style2) 
 
 
 
@@ -599,9 +601,9 @@ ggplot(datos, aes(x = tipo_persona_arrendador)) +
 
 # Gráfico de barras de las proporciones con etiquetas de altura
 ggplot(datos, aes(x = tipo_persona_arrendador)) +
-  geom_bar(aes(y = (..count..)/sum(..count..)), fill = "cornsilk1", color = "cornsilk2") +
-  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
-                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
+  geom_bar(aes(y = (after_stat(count))/sum(after_stat(count))), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(y = (after_stat(count))/sum(after_stat(count)), 
+                                label = scales::percent((after_stat(count))/sum(after_stat(count)), accuracy = 0.1)),
             vjust = +0.5, size = 3, color = "cornsilk4") +
   labs(x = "", y = "Frecuencia", title = "Tipo de persona del arrendador") +
   scale_y_continuous(labels = scales::percent_format(scale = 100)) +
@@ -768,7 +770,7 @@ ggplot(datos_pj, aes(x = orden_factores)) +
   labs(x = "", 
        y = "Frecuencia",
        title = "Tipo Entidad Arrendador")+
-  scale_x_discrete(labels = str_wrap(levels(datos_pj$tipo_pj_agr), width = 20))+
+  scale_x_discrete(labels = str_wrap(levels(orden_factores), width = 20))+
   theme_minimal()+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -879,11 +881,7 @@ tabla <- pinta_tabla(datos,
                      orden = "SI")
 print(tabla)
 
-tabla <- pinta_tabla3(datos,
-                      campo = "tipo_de_arrendamiento",
-                      campo_descriptivo = "Tipo de arrendamiento",
-                      orden = "SI")
-print(tabla)
+
 
 
 
@@ -1010,16 +1008,18 @@ ggplot(datos, aes(x = fct_infreq(municipio_806))) +
 
 # Construir el ranking de los municipios con más casos
 n_ranking <- 25
-munic_25_mayores <- datos %>% 
+munic_n_mayores <- datos %>% 
   group_by(municipio_806) %>% 
   summarise(n=n()) %>% 
   arrange(desc(n)) %>% 
-  head(n_ranking) %>% 
+  head(n_ranking) 
+
+munic_n_mayores <- munic_n_mayores %>% 
   mutate(municipio_806 = factor(municipio_806,
-                    levels = munic_25_mayores$municipio_806[order(munic_25_mayores$n)])
+                    levels = munic_n_mayores$municipio_806[order(munic_n_mayores$n)])
   )
 
-ggplot(munic_25_mayores, aes(x = municipio_806, y = n)) +
+ggplot(munic_n_mayores, aes(x = municipio_806, y = n)) +
   geom_bar(stat="identity", fill = "cornsilk1", color = "cornsilk2") +
   #geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
   labs(x = "", 
@@ -1113,7 +1113,7 @@ ggplot(datos,
 
 # Ahora uso los intervalos decidos para la difusión
 
-# aqui estaba la definicion de factor de duracoin de contrato
+# aqui estaba la definicion de factor de duración de contrato
 tabla <- pinta_tabla(datos, "f.durac_contrato", "Duración de contrato")
 print(tabla)
 
@@ -1343,15 +1343,15 @@ datos %>% summarise(Media = mean(importe_de_la_renta, na.rm = TRUE),
 datos %>% summarise(#Media = mean(importe_de_la_renta, na.rm = TRUE),
                     #Desv.Típica = sqrt(var(importe_de_la_renta, na.rm = TRUE)),
                     #Mínimo=min(importe_de_la_renta, na.rm = TRUE),
-                    Q10 = quantile(importe_de_la_renta, 0.1, na.rm = TRUE),
-                    Q20 = quantile(importe_de_la_renta, 0.2, na.rm = TRUE),
-                    Q30 = quantile(importe_de_la_renta, 0.3, na.rm = TRUE),
-                    Q40 = quantile(importe_de_la_renta, 0.4, na.rm = TRUE),
-                    Q50 = quantile(importe_de_la_renta, 0.5, na.rm = TRUE),
-                    Q60 = quantile(importe_de_la_renta, 0.6, na.rm = TRUE),
-                    Q70 = quantile(importe_de_la_renta, 0.7, na.rm = TRUE),
-                    Q80 = quantile(importe_de_la_renta, 0.8, na.rm = TRUE),
-                    Q90 = quantile(importe_de_la_renta, 0.9, na.rm = TRUE),
+                    Q10 = quantile(importe_de_la_renta, 0.1, na.rm = TRUE, type = 4),
+                    Q20 = quantile(importe_de_la_renta, 0.2, na.rm = TRUE, type = 4),
+                    Q30 = quantile(importe_de_la_renta, 0.3, na.rm = TRUE, type = 4),
+                    Q40 = quantile(importe_de_la_renta, 0.4, na.rm = TRUE, type = 4),
+                    Q50 = quantile(importe_de_la_renta, 0.5, na.rm = TRUE, type = 4),
+                    Q60 = quantile(importe_de_la_renta, 0.6, na.rm = TRUE, type = 4),
+                    Q70 = quantile(importe_de_la_renta, 0.7, na.rm = TRUE, type = 4),
+                    Q80 = quantile(importe_de_la_renta, 0.8, na.rm = TRUE, type = 4),
+                    Q90 = quantile(importe_de_la_renta, 0.9, na.rm = TRUE, type = 4),
                     Máximo = max(importe_de_la_renta, na.rm = TRUE)
 ) %>% 
   #pivot_longer(everything(),names_to = "Medida", values_to = "Valor") %>% 
@@ -1425,11 +1425,11 @@ ggplot(datos, aes(x = importe_de_la_renta)) +
   scale_x_continuous(breaks = seq(0, max(datos$importe_de_la_renta, na.rm = TRUE),5000))
 
 grafico
-quantile <- quantile(datos$importe_de_la_renta, prob = seq(0,1,0.1))
+quantile <- quantile(datos$importe_de_la_renta, prob = seq(0,1,0.1), type = 4)
 names <- paste0("Q", seq(0,100,10))
 grafico + geom_vline(xintercept=quantile, color="lightsalmon3" )
 
-quantile <- quantile(datos$importe_de_la_renta, prob = seq(0,1,0.1))
+quantile <- quantile(datos$importe_de_la_renta, prob = seq(0,1,0.1), type = 4)
 
 grafico <-
 ggplot(datos, aes(x = importe_de_la_renta)) +
@@ -1578,15 +1578,15 @@ datos %>% summarise(Media = mean(stotalocal_14, na.rm = TRUE),
                     Desv.Típica = sqrt(var(stotalocal_14, na.rm = TRUE)),
                     Moda = modeest::mfv(stotalocal_14)
                     # Mínimo=min(stotalocal_14, na.rm = TRUE),
-                    # Q10 = quantile(stotalocal_14, 0.1, na.rm = TRUE),
-                    # Q20 = quantile(stotalocal_14, 0.2, na.rm = TRUE),
-                    # Q30 = quantile(stotalocal_14, 0.3, na.rm = TRUE),
-                    # Q40 = quantile(stotalocal_14, 0.4, na.rm = TRUE),
-                    # Q50 = quantile(stotalocal_14, 0.5, na.rm = TRUE),
-                    # Q60 = quantile(stotalocal_14, 0.6, na.rm = TRUE),
-                    # Q70 = quantile(stotalocal_14, 0.7, na.rm = TRUE),
-                    # Q80 = quantile(stotalocal_14, 0.8, na.rm = TRUE),
-                    # Q90 = quantile(stotalocal_14, 0.9, na.rm = TRUE),
+                    # Q10 = quantile(stotalocal_14, 0.1, na.rm = TRUE, type = 4),
+                    # Q20 = quantile(stotalocal_14, 0.2, na.rm = TRUE, type = 4),
+                    # Q30 = quantile(stotalocal_14, 0.3, na.rm = TRUE, type = 4),
+                    # Q40 = quantile(stotalocal_14, 0.4, na.rm = TRUE, type = 4),
+                    # Q50 = quantile(stotalocal_14, 0.5, na.rm = TRUE, type = 4),
+                    # Q60 = quantile(stotalocal_14, 0.6, na.rm = TRUE, type = 4),
+                    # Q70 = quantile(stotalocal_14, 0.7, na.rm = TRUE, type = 4),
+                    # Q80 = quantile(stotalocal_14, 0.8, na.rm = TRUE, type = 4),
+                    # Q90 = quantile(stotalocal_14, 0.9, na.rm = TRUE, type = 4),
                     # Máximo = max(stotalocal_14, na.rm = TRUE)
 ) %>% 
   pivot_longer(everything(),names_to = "Medida", values_to = "Valor") %>% 
@@ -1599,15 +1599,15 @@ datos %>% summarise(Media = mean(stotalocal_14, na.rm = TRUE),
 datos %>% summarise(#Media = mean(stotalocal_14, na.rm = TRUE),
   #Desv.Típica = sqrt(var(stotalocal_14, na.rm = TRUE)),
   Mínimo=min(stotalocal_14, na.rm = TRUE),
-  Q10 = quantile(stotalocal_14, 0.1, na.rm = TRUE),
-  Q20 = quantile(stotalocal_14, 0.2, na.rm = TRUE),
-  Q30 = quantile(stotalocal_14, 0.3, na.rm = TRUE),
-  Q40 = quantile(stotalocal_14, 0.4, na.rm = TRUE),
-  Q50 = quantile(stotalocal_14, 0.5, na.rm = TRUE),
-  Q60 = quantile(stotalocal_14, 0.6, na.rm = TRUE),
-  Q70 = quantile(stotalocal_14, 0.7, na.rm = TRUE),
-  Q80 = quantile(stotalocal_14, 0.8, na.rm = TRUE),
-  Q90 = quantile(stotalocal_14, 0.9, na.rm = TRUE),
+  Q10 = quantile(stotalocal_14, 0.1, na.rm = TRUE, type = 4),
+  Q20 = quantile(stotalocal_14, 0.2, na.rm = TRUE, type = 4),
+  Q30 = quantile(stotalocal_14, 0.3, na.rm = TRUE, type = 4),
+  Q40 = quantile(stotalocal_14, 0.4, na.rm = TRUE, type = 4),
+  Q50 = quantile(stotalocal_14, 0.5, na.rm = TRUE, type = 4),
+  Q60 = quantile(stotalocal_14, 0.6, na.rm = TRUE, type = 4),
+  Q70 = quantile(stotalocal_14, 0.7, na.rm = TRUE, type = 4),
+  Q80 = quantile(stotalocal_14, 0.8, na.rm = TRUE, type = 4),
+  Q90 = quantile(stotalocal_14, 0.9, na.rm = TRUE, type = 4),
   Máximo = max(stotalocal_14, na.rm = TRUE)) %>% 
   #pivot_longer(everything(),names_to = "Medida", values_to = "Valor") %>% 
   flextable() %>% 
@@ -1772,8 +1772,7 @@ ggplot(datos,
   geom_text(stat = "count", aes(y = (..count..), 
                                 label = (..count..)),
             vjust = +0.5, size = 3, color = "cornsilk4")  +
-  theme_minimal() +
-  scale_x_discrete(labels = c( etiquetas,  "No especificado"))
+  theme_minimal() 
 
 # grafico con datos relativos
 ggplot(datos,
@@ -1813,8 +1812,8 @@ ggplot(datos,
   geom_text(stat = "count", aes(y = (..count..), 
                                 label = (..count..)),
             vjust = +0.5, size = 3, color = "cornsilk4")  +
-  theme_minimal() +
-  scale_x_discrete(labels = c( etiquetas,  "No especificado"))
+  theme_minimal() # +
+ # scale_x_discrete(labels = c( etiquetas,  "No especificado"))
 
 
 # grafico con datos relativos
@@ -1883,12 +1882,6 @@ ggplot(datos,
 # aqui estaba la definicion de factores
 
 tabla <- pinta_tabla(datos, "f.tipolog", Etiqueta("tip_const4d_14"))
-print(tabla)
-
-
-# Con los intervalos definidos para la difusión
-#aqui estaba la definicion de factores
-tabla <- pinta_tabla(datos, "f.antig_bi", "Antigüedad de la vivienda")
 print(tabla)
 
 # grafico con valores absolutos
@@ -2076,26 +2069,9 @@ ggplot(datos,
   geom_text(stat = "count", aes(y = (..count..), 
                                 label = (..count..)),
             vjust = +0.5, size = 3, color = "cornsilk4")  +
-  theme_minimal() +
-  scale_x_discrete(labels = str_wrap(c(levels(datos$calidad), "No especificado"),width= 18))
+  theme_minimal() 
 
 
-
-# grafico con datos relativos
-ggplot(datos,
-       aes(x = calidad)) +
-  geom_bar(aes (y = ..count../sum(..count..)),
-           fill = "cornsilk1",
-           color = "cornsilk2",
-           stat = "count",
-           na.rm = FALSE ) +   # no produce ningún efecto aunque el manual diga lo contario
-  labs(x = "Calidad constructiva", y = "Casos") +
-  geom_text(stat = "count", aes(y = (..count..)/sum(..count..), 
-                                label = scales::percent((..count..)/sum(..count..), accuracy = 0.1)),
-            vjust = +0.5, size = 3, color = "cornsilk4")  +
-  theme_minimal() +
-  scale_x_discrete(labels = str_wrap(c(levels(datos$calidad), "No especificado"),width= 18))+
-  scale_y_continuous(labels = scales::percent_format(scale = 100))
 
 
 
@@ -2114,7 +2090,7 @@ table(datos$tip_const4d_14, datos$tipviv)
 
 # aqui estaba la definicion de factores
     
-tabla <- pinta_tabla(datos, "h2o", "Tenencia de piscina")
+tabla <- pinta_tabla(datos, "h2o", "Disponibilidad de piscina")
 print(tabla)
 
 # grafico con valores absolutos
@@ -2234,6 +2210,9 @@ ggplot(datos,
   theme_minimal() +
   scale_x_discrete(labels = str_wrap(c(levels(datos$app), "No especificado"),width= 18))+
   scale_y_continuous(labels = scales::percent_format(scale = 100))
+
+
+
 
 
 
