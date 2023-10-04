@@ -29,7 +29,7 @@ min(datos$num_habitaciones, na.rm = TRUE)
 
 
 
-Q3 <- quantile(datos$stotalocal_14, 0.95)
+Q3 <- quantile(datos$stotalocal_14, 0.95, type = 4)
 
 Altos <- datos %>%
   filter(stotalocal_14 >  Q3)
@@ -84,8 +84,8 @@ ggplot(datos, aes(x = stotalocal_14)) +
   theme_minimal()
 
 # analisis de los mas grandes
-Q1 <- quantile(datos$stotalocal_14, 0.25, na.rm = TRUE)
-Q3 <- quantile(datos$stotalocal_14, 0.75, na.rm = TRUE)
+Q1 <- quantile(datos$stotalocal_14, 0.25, na.rm = TRUE, type = 4)
+Q3 <- quantile(datos$stotalocal_14, 0.75, na.rm = TRUE, type = 4)
 IQR <- Q3 - Q1
 
 limite_inferior <- Q1 - 1.5 * IQR
@@ -93,12 +93,12 @@ limite_superior <- Q3 + 4 * IQR
 
 #análisis de los más grandes
 
-percentil_95 <- quantile(datos$stotalocal_14, probs = 0.95, na.rm = TRUE)
+percentil_95 <- quantile(datos$stotalocal_14, probs = 0.95, na.rm = TRUE, type = 4)
 mayores_95 <- datos %>%
   filter(stotalocal_14 > limite_superior)
 
-Q_05 <- quantile(datos$stotalocal_14, 0.05, na.rm = TRUE)
-Q_95 <- quantile(datos$stotalocal_14, 0.95, na.rm = TRUE)
+Q_05 <- quantile(datos$stotalocal_14, 0.05, na.rm = TRUE, type = 4)
+Q_95 <- quantile(datos$stotalocal_14, 0.95, na.rm = TRUE, type = 4)
 centro_90 <- datos %>%
   filter(stotalocal_14 > Q_05 & stotalocal_14 < Q_95)
 
@@ -149,7 +149,7 @@ segmento_n_hab <- cut(mayores_95$num_habitaciones,
 segmento_superf <- cut(mayores_95$stotalocal_14, 
                        breaks = quantile(mayores_95$stotalocal_14,
                                          probs = seq(0, 1, 0.1),
-                                         na.rm = TRUE), 
+                                         na.rm = TRUE, type = 4), 
                        include.lowest = TRUE)
 
 tabla_contingencia <- table(segmento_n_hab, segmento_superf)
@@ -172,14 +172,14 @@ ggplot(mayores_95, aes(x = importe_de_la_renta)) +
 segmento_importe <- cut(mayores_95$importe_de_la_renta, 
                         breaks = quantile(mayores_95$stotalocal_14,
                                           probs = seq(0, 1, 0.1),
-                                          na.rm = TRUE), 
+                                          na.rm = TRUE, type = 4), 
                         include.lowest = TRUE)
 
 
 segmento_superf <- cut(mayores_95$stotalocal_14, 
                        breaks = quantile(mayores_95$stotalocal_14,
                                          probs = seq(0, 1, 0.1),
-                                         na.rm = TRUE), 
+                                         na.rm = TRUE, type = 4), 
                        include.lowest = TRUE)
 
 tabla_contingencia <- table(segmento_importe, segmento_superf)
@@ -225,7 +225,7 @@ ggplot(datos, aes(x = renta_m2)) +
   labs(x = "Renta €/m2", y = "Frecuencia") +
   theme_minimal()
 
-Q_05 <- quantile(datos$renta_m2, 0.05, na.rm = TRUE)
+Q_05 <- quantile(datos$renta_m2, 0.05, na.rm = TRUE, type = 4)
 kk <- datos %>%
   filter(renta_m2 < Q_05)
 
@@ -257,14 +257,14 @@ viviendas_repetidas_avra <- datos %>%
 
 
 # analisis de los mas grandes
-Q1 <- quantile(datos$stotalocal_14, 0.25, na.rm = TRUE)
-Q3 <- quantile(datos$stotalocal_14, 0.75, na.rm = TRUE)
+Q1 <- quantile(datos$stotalocal_14, 0.25, na.rm = TRUE, type = 4)
+Q3 <- quantile(datos$stotalocal_14, 0.75, na.rm = TRUE, type = 4)
 IQR <- Q3 - Q1
 
 limite_inferior <- Q1 - 1.5 * IQR
 limite_superior <- Q3 + 1.5 * IQR
 
-Q95 <- quantile(datos$stotalocal_14, 0.95, na.rm = TRUE)
+Q95 <- quantile(datos$stotalocal_14, 0.95, na.rm = TRUE, type = 4)
 limite_superior2 <- 2 * Q95 
 
 # Calcular la función de distribución acumulada empírica
@@ -325,8 +325,8 @@ datos <- datos %>%
   mutate(err_sup = ifelse( stotalocal_14 > 250, "grande",""))
 
 
-Q1 <- quantile(datos$importe_de_la_renta, 0.05, na.rm = TRUE)
-Q3 <- quantile(datos$importe_de_la_renta, 0.95, na.rm = TRUE)
+Q1 <- quantile(datos$importe_de_la_renta, 0.05, na.rm = TRUE, type = 4)
+Q3 <- quantile(datos$importe_de_la_renta, 0.95, na.rm = TRUE, type = 4)
 IQR <- Q3 - Q1
 
 limite_inferior <- Q1 - 1.5 * IQR
@@ -351,8 +351,8 @@ kkk2 <- kk2 %>%
 
 kk$a_ant_bim
 
-Q1 <- quantile(datos$renta_m2, 0.05, na.rm = TRUE)
-Q3 <- quantile(datos$renta_m2, 0.95, na.rm = TRUE)
+Q1 <- quantile(datos$renta_m2, 0.05, na.rm = TRUE, type = 4)
+Q3 <- quantile(datos$renta_m2, 0.95, na.rm = TRUE, type = 4)
 IQR <- Q3 - Q1
 
 limite_inferior <- Q1 - 1.5 * IQR
@@ -564,8 +564,8 @@ datos_1 <- datos[datos$tasa_superf <= 3, ]
 
 # Definir una función para identificar los outliers y crear un nuevo campo
 crear_nuevos_campos <- function(vector) {
-  q1 <- quantile(vector, 0.25)
-  q3 <- quantile(vector, 0.75)
+  q1 <- quantile(vector, 0.25, type = 4)
+  q3 <- quantile(vector, 0.75, type = 4)
   iqr <- q3 - q1
   limit_inf <- q1 - 1.5 * iqr
   limit_sup <- q3 + 1.5 * iqr
@@ -659,7 +659,7 @@ ggplot(datos_1, aes( x = importe_de_la_renta,
 # € /m2 > 20
 
 iqr <- IQR(datos$stotalocal_14)
-third_quartile <- quantile(datos$stotalocal_14, 0.75)
+third_quartile <- quantile(datos$stotalocal_14, 0.75, type = 4)
 limite_conservador <- third_quartile + 4 * iqr
 cat("3 cuartil", third_quartile, 
     " - IQR ", iqr, 
@@ -726,7 +726,7 @@ en el chatgpt con hilos posteriores a New chat hay 7 hilos con cuestiones intere
 a desarrollar.
 
 
-quantile(datos$stotalocal_14, 0.95)
+quantile(datos$stotalocal_14, 0.95, type = 4)
 
 sin_grandes <- datos %>% filter(datos$stotalocal_14 < 149)
 

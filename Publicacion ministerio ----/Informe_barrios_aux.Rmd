@@ -1,0 +1,180 @@
+
+## Almería
+```{r}
+   lista_mapas_barrios[["Almería"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Almería"]]
+```
+
+\newpage
+## Cádiz
+```{r}
+   lista_mapas_barrios[["Cádiz"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Cádiz"]]
+```
+\newpage
+## Algeciras
+```{r}
+   lista_mapas_barrios[["Algeciras"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Algeciras"]]
+```
+\newpage
+
+## Jerez de la Frontera
+```{r}
+   lista_mapas_barrios[["Jerez de la Frontera"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Jerez de la Frontera"]]
+```
+\newpage
+## Córdoba
+```{r}
+   lista_mapas_barrios[["Córdoba"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Córdoba"]]
+```
+
+\newpage
+## Granada
+```{r}
+   lista_mapas_barrios[["Granada"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Granada"]]
+```
+
+\newpage
+## Huelva
+```{r}
+   lista_mapas_barrios[["Huelva"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Huelva"]]
+```
+
+\newpage
+## Jaén
+```{r}
+   lista_mapas_barrios[["Jaén"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Jaén"]]
+```
+
+\newpage
+## Málaga
+```{r}
+   lista_mapas_barrios[["Málaga"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Málaga"]]
+```
+\newpage
+
+## Marbella
+```{r}
+   lista_mapas_barrios[["Marbella"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Marbella"]]
+```
+
+
+\newpage
+
+## Sevilla
+```{r}
+   lista_mapas_barrios[["Sevilla"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Sevilla"]]
+```
+
+\newpage
+
+## Dos Hermanas
+```{r}
+   lista_mapas_barrios[["Dos Hermanas"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+```{r }
+    lista_flex_barrios[["Dos Hermanas"]]
+```

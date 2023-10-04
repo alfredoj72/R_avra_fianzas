@@ -1,0 +1,92 @@
+```{r fig.align = "left" }
+tabla_frecuencias <- tabla_frecuencias %>%
+  mutate(`Frec. Absoluta` = as.integer(`Frec. Absoluta`)) 
+
+total <- sum(tabla_frecuencias$`Frec. Absoluta`)
+
+suma_fila <- tabla_frecuencias %>%
+  summarise( `Frec. Absoluta` = sum(`Frec. Absoluta`),
+             `Frec. Relativa` = sum(`Frec. Relativa`))
+
+
+tabla_frecuencias <- bind_rows(tabla_frecuencias, suma_fila) %>% 
+  mutate(enlace = ifelse(is.na(enlace), "Suma", enlace)) %>% 
+  rename(`Frec. Relativa (%)` = `Frec. Relativa`)
+
+rm(suma_fila)
+```
+El número de total de registros de fianzas utilizados en el presente analisis
+exploratorio de datos es `r to_int(total)`.    
+
+El proceso de análisis de la información comienza con la conexión de los datos
+del registro de AVRA con la información catastral proporcionada por el IECA. El proceso de enlace ha concluido con los siguientes datos:
+
+```{r}
+tabla_frecuencias %>% 
+  flextable() %>%  
+  set_header_labels(enlace = "Tipo enlace") %>% 
+  colformat_double() %>% 
+  autofit() %>% 
+  border_remove() %>% 
+  align(align = "center", j = 1, part = "all") %>% 
+  hline(part = "header", i = 1, border = border_style1)   %>%
+  hline(part = "body", i = nrow(tabla_frecuencias)-1, border = border_style2) 
+```
+
+Hay casos en las que la Referencia Catastral indicada en el Registro de Fianzas
+enlaza en catastro con más de una vivienda idenfificada por el IECA.
+Cuando todas las viviendas de catastro asociadas a una vivienda del Registro
+son muy similares (coeficiente de variación <2) enlazamos el registro con una cualquiera de ellas.  
+
+De esta forma, el resumen final de conexiones con el catastro es el siguiente:
+
+```{r}
+suma_fila <- tabla_frecuencias_final %>%
+  summarise(casos= sum(casos),
+            frec_relativa = sum(frec_relativa))
+
+tabla_frecuencias_final <- bind_rows(tabla_frecuencias_final, suma_fila) %>% 
+  mutate(tipo = ifelse(is.na(tipo), "Suma", tipo))
+
+tabla_frecuencias_final %>%
+  flextable() %>%  
+  set_header_labels(tipo = "Tipo enlace",
+                    casos = "Frec. Absoluta",
+                    frec_relativa = "Frec. Relativa (%)") %>% 
+  colformat_double() %>% 
+  autofit() %>% 
+  border_remove() %>% 
+  #align(align = "center", j = 1, part = "all") %>% 
+  hline(part = "header", i = 1, border = border_style1)   %>%
+  hline(part = "body", i = nrow(tabla_frecuencias_final)-1, border = border_style2)
+```
+
+El registro de fianzas permite incluir asientos que se corresponden con un grupo de viviendas o en ocasiones con construcciones que no pueden ser consideradas como tales.   
+Tras la conexión de los datos con la información catastral se realiza un proceso de depuración de los datos fruto del cuál se determinan varios criterios para la eliminación de determinados registros de manera previa a la fase de estudio.
+
+El proceso de depuración ha concluido de acuerdo al siguiente resumen de datos:
+
+```{r}
+
+tabla_frecuencia_filtros <- tabla_frecuencia_filtros %>% 
+  mutate(frec_relativa = 100 * casos/sum(casos))
+
+suma_fila <- tabla_frecuencia_filtros %>%
+  summarise(casos= sum(casos),
+            frec_relativa =sum(frec_relativa)) 
+
+tabla_frecuencia_filtros <- bind_rows(tabla_frecuencia_filtros, suma_fila) %>% 
+  mutate(Tipo = ifelse(is.na(Tipo), "Suma", Tipo))
+
+tabla_frecuencia_filtros %>%
+  flextable() %>% 
+  set_header_labels(Tipo = "Motivo",
+                    casos = "Registros no usados",
+                    frec_relativa = " %") %>% 
+  colformat_double() %>% 
+  autofit() %>% 
+  border_remove() %>% 
+  #align(align = "center", j = 1, part = "all") %>% 
+  hline(part = "header", i = 1, border = border_style1)   %>%
+  hline(part = "body", i = nrow(tabla_frecuencia_filtros)-1, border = border_style2)
+```

@@ -31,6 +31,8 @@ pacman::p_load(readxl,RPostgres,sf,tidyverse,writexl,glue,here)
 load("./datos_output/datos_avra.Rdata")
 source("Funciones.R")
 
+datos_avra_crudos <- avra2018_2022   # Cabiar cuando se incluyan más años 
+
 #########################################################################
 # ejecutar un año
 # avra_2022 <- avra2018_2022 %>%
@@ -90,7 +92,7 @@ source("Funciones.R")
 # Parte de los datos ya leidos y genera el conjunto de tablas
 
 proceso_completo <- function(anyo_sel) {
-avra_anyo <- avra2018_2022 %>% 
+avra_anyo <- datos_avra_crudos %>% 
   filter(as.character(format(avra2018_2022$FECHA_DEVENGO, "%Y")) == anyo_sel)
 
 # Añade la información del catastro a cada vivienda del registro de fianzas
@@ -143,6 +145,21 @@ for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
 
 
 
+proceso_completo_PARTE1 <- function(anyo_sel) {
+  avra_anyo <- datos_avra_crudos %>% 
+    filter(as.character(format(avra2018_2022$FECHA_DEVENGO, "%Y")) == anyo_sel)
+  
+  # Añade la información del catastro a cada vivienda del registro de fianzas
+  avra_catastro_anyo <- añade_campos_catastro(avra_anyo)
+  
+  # Salva en el directorio datos_output la información en y xlsx
+  salva_tablas_avra_catastro_alt(avra_catastro_anyo, anyo_sel)
+  
+  # Salva en el directorio datos_output la información en .Rdata
+  nombre_df <- glue("avra_catastro_{anyo_sel}")
+  assign(nombre_df, avra_catastro_anyo )
+  save(list = nombre_df, file = glue("./datos_output/avra_catastro_{anyo_sel}.RData"))
+}  
 
 
 
@@ -150,8 +167,7 @@ for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
 
 #>Hace el proceso completo salvo la primera parte de conexión de los datos con 
 #>catastro
-
-proceso_completo_auxiliar <- function(anyo_sel) {
+proceso_completo_PARTE2 <- function(anyo_sel) {
   print(glue("Procesando año {anyo_sel}"))
   
   load(file = glue("./datos_output/avra_catastro_{anyo_sel}.RData"))
@@ -179,10 +195,10 @@ proceso_completo_auxiliar <- function(anyo_sel) {
 }
 
 for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
-  proceso_completo_auxiliar(anyo_sel)
+  proceso_completo_PARTE2(anyo_sel)
   #print(anyo_sel)
 }
-
+rm(anyo_sel)
 
 
 

@@ -32,14 +32,14 @@ datos <- st_drop_geometry(datos)
 
 
 # Si no existe el archivo que contiene las capas con los atributos, lo crea
-if (!file.exists("datos_output/datos_para_mapas.Rdata")) {
+if (!file.exists("datos_output/capas_con_datos_para_mapas.Rdata")) {
   source("Funciones.R")
   # Ejecuta el script para crear las capas y añadir los campos
-  crea_capas_y_campos()
+  cargar_capas_y_añadir_campos()
 } 
 
 # Carga las capas
-load(file = "datos_output/datos_para_mapas.Rdata")
+load(file = "datos_output/capas_con_datos_para_mapas.Rdata")
 
 
 ## Con tmap ########

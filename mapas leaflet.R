@@ -32,15 +32,15 @@ datos <- st_drop_geometry(datos)
 
 
 # Si no existe el archivo que contiene las capas con los atributos, lo crea
-if (!file.exists("datos_output/datos_para_mapas.Rdata")) {
+if (!file.exists("datos_output/capas_con_datos_para_mapas.Rdata")) {
   source("Funciones.R")
   # Ejecuta el script para crear las capas y añadir los campos
-  crea_capas_y_campos()
+  cargar_capas_y_añadir_campos()
 } 
 
 
 # Carga las capas
-load(file = "datos_output/datos_para_mapas.Rdata")
+load(file = "datos_output/capas_con_datos_para_mapas.Rdata")
 
 
 
@@ -135,7 +135,7 @@ pal_colores <- colorNumeric(palette = "YlOrBr",
                             na.color = "white")
 
 # 2. Popup 
-popup <- paste0("<b>Provincia: </b>", municipio_sf_g$nombre, "<br>", 
+popup <- paste0("<b>municipio_sf_g$nombre </b>", "<br>", 
                 "<b>Casos: </b>", municipio_sf_g$casos, "<br>")
 
 leaflet() %>%  # Creamos un objeto leaflet

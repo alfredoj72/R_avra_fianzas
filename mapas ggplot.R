@@ -31,12 +31,6 @@ datos <- datos_para_analisis_2022[["datos"]]
 datos <- st_drop_geometry(datos)
 
 
-# Si no existe el archivo que contiene las capas con los atributos, lo crea
-if (!file.exists("datos_output/datos_para_mapas.Rdata")) {
-  source("Funciones.R")
-  # Ejecuta el script para crear las capas y añadir los campos
-  crea_capas_y_campos()
-} 
 
 #actualizar a algo que vaya a usar
 theme_ams_map <- function(base_size = 11,
@@ -77,13 +71,14 @@ mapa + theme_classic()
 mapa + theme_linedraw()
 
 # Si no existe el archivo que contiene las capas con los atributos, lo crea
-if (!file.exists("datos_output/datos_para_mapas.Rdata")) {
+if (!file.exists("datos_output/capas_con_datos_para_mapas.Rdata")) {
   # Ejecuta el script para crear las capas y añadir los campos
-  crea_capas_y_campos()
+  cargar_capas_y_añadir_campos()
 } 
 
+
 # Carga las capas
-load(file = "datos_output/datos_para_mapas.Rdata")
+load(file = "datos_output/capas_con_datos_para_mapas.Rdata")
 
 
 ## Con ggplot2 ####
@@ -125,7 +120,7 @@ ggplot() +
     legend.position = c(0.8, 0.12)
   ) 
 
-
+mapa
 max_valor <- max(municipio_sf$casos, na.rm = TRUE)
 
 ggplot() +

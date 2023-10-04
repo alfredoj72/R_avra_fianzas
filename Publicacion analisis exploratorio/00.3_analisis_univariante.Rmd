@@ -1,0 +1,556 @@
+## Tipo de persona arrendador   
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "tipo_persona_arrendador", Etiqueta("tipo_persona_arrendador"))
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=4}
+
+grafico_barras(datos, "tipo_persona_arrendador")
+```
+
+## Tipo de entidad del arrendador
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "f.persona_fj", "Tipo entidad Arrendador")
+```
+<br>
+
+
+```{r results="asis", fig.height=5, fig.width=7}
+datos <- datos %>%
+  mutate(aux = ifelse(tipo_persona_arrendador == "Jurídica",
+                      substr(tipo_entidad_arrendador, 1, 1),
+                      "P. Física"),
+         aux = factor(aux,
+                      levels = (c("P. Física",
+                                  substr(levels(datos$tipo_entidad_arrendador), 1, 1))))) 
+
+grafico_barras(datos, "aux", "Tipo entidad Arrendador")
+```
+<br>  
+
+Hay bastantes tipos de entidad que apenas disponen de pocos registros. Si
+nos quedamos con los grupos más frecuentes:
+
+```{r}
+# Ahora agrupo factores para quedarme con los más frecuentes (5 en este caso)
+N_grupos <- 5 # número de factores que dejo 
+# Dejo solo los tipos más frecuentes 
+datos <- datos %>% 
+    mutate(tipo_pj_agr = fct_lump(
+      f.persona_fj,
+      n = N_grupos,
+      other_level = "Resto"
+    ))
+
+pinta_tabla(datos,"tipo_pj_agr", 
+                     "Tipo Entidad Arrendador más frecuentes", 
+                     orden ="SI")
+```
+
+
+```{r fig.height=5, fig.width=6}
+# Ordeno los factores por frecuencia de los factores y me llevo el factor "Resto" al final, detrás del penúltimo
+posicion_penultima <- length(levels(datos$tipo_pj_agr)) - 1
+orden_factores <- fct_relevel(fct_infreq(datos$tipo_pj_agr), "Resto", after = posicion_penultima)
+
+ggplot(datos, aes(x = orden_factores)) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Tipo Entidad Arrendador")+
+  scale_x_discrete(labels = str_wrap(levels(orden_factores), width = 20))+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+## Tipo de entidad del arrendador (Persona Jurídica)
+<br>  
+```{r results="asis"}
+pinta_tabla3(datos, "tipo_entidad_arrendador", Etiqueta("tipo_entidad_arrendador"))
+```
+<br>
+
+Si se prefiere la tabla ordenada
+
+```{r results="asis"}
+pinta_tabla3(datos,"tipo_entidad_arrendador", "Tipo Entidad Arrendador", orden ="SI")
+```
+En el gráfico solo consideramos los valores válidos
+
+```{r results="asis", fig.height=5, fig.width=7}
+datos_pj <- datos %>%
+              filter(tipo_persona_arrendador == "Jurídica") %>% 
+              mutate(aux = tipo_entidad_arrendador,
+                     tipo_entidad_arrendador = substr(tipo_entidad_arrendador, 1, 1))
+
+grafico_barras(datos_pj, "tipo_entidad_arrendador")
+datos_pj <- datos_pj %>% 
+              mutate(tipo_entidad_arrendador = aux)
+```
+
+Hay bastantes tipos de entidad que apenas disponen de pocos registros. Si nos quedamos con los 4 grupos más frecuentes:
+
+```{r}
+# Ahora agrupo factores para quedarme con los más frecuentes (4 en este caso)
+N_grupos <- 4 # número de factores que dejo 
+# Dejo solo los 4 tipos más frecuentes 
+datos_pj <- datos_pj %>% 
+    mutate(tipo_pj_agr = fct_lump(
+      tipo_entidad_arrendador,
+      n = N_grupos,
+      other_level = "Resto"
+    ))
+
+
+pinta_tabla(datos_pj,"tipo_pj_agr", 
+                     "Tipo Entidad Arrendador más frecuentes", 
+                     orden ="SI")
+```
+
+```{r fig.height=6, fig.width=5}
+# Ordeno los factores por frecuencia de los factores y me llevo el factor "Resto" al final, detrás del penúltimo
+posicion_penultima <- length(levels(datos_pj$tipo_pj_agr)) - 1
+orden_factores <- fct_relevel(fct_infreq(datos_pj$tipo_pj_agr), "Resto", after = posicion_penultima)
+
+ggplot(datos_pj, aes(x = orden_factores)) +
+  geom_bar(fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Tipo Entidad Arrendador")+
+  scale_x_discrete(labels = str_wrap(levels(orden_factores), width = 20))+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+## Sexo del arrendador
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "sexo_arrendador", Etiqueta("sexo_arrendador"))
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=4}
+# Tomo el orden original de los factores
+aux <- levels(datos$sexo_arrendador)
+
+# Reemplazar los valores NA con "No especificado" creando un nuevo factor
+datos$sexo_aux <- ifelse(is.na(datos$sexo_arrendador), "No especificado",
+                         as.character(datos$sexo_arrendador))
+
+# Convertir el nuevo factor en un factor ordenado
+datos$sexo_aux <- factor(datos$sexo_aux, levels = c(aux, "No especificado"))
+
+
+grafico_barras(datos, "sexo_aux", "Sexo del arrendador")
+```
+
+Si considerarmos solo personas físicas se despejan los valores no procedentes.
+
+<br>  
+```{r results="asis"}
+datos_pf <- datos %>%
+              filter(tipo_persona_arrendador == "Física")
+pinta_tabla(datos_pf, "sexo_arrendador", Etiqueta("sexo_arrendador"))
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=4}
+
+
+grafico_barras(datos_pf, "sexo_aux", "Sexo arrendador")
+```
+
+## Sexo del arrendatario
+<br>  
+```{r results="asis"}
+pinta_tabla3(datos, "sexo_arrendatario", Etiqueta("sexo_arrendatario"))
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=4}
+
+# Tomo el orden original de los factores
+aux <- levels(datos$sexo_arrendatario)
+
+# Reemplazar los valores NA con "No especificado" creando un nuevo factor
+datos$sexo_aux <- ifelse(is.na(datos$sexo_arrendatario), "No especificado",
+                         as.character(datos$sexo_arrendatario))
+
+# Convertir el nuevo factor en un factor ordenado
+datos$sexo_aux <- factor(datos$sexo_aux, levels = c(aux, "No especificado"))
+
+grafico_barras(datos, "sexo_aux", "Sexo Arrendatario")
+```
+
+## Nacionalidad del arrendatario
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "nacionalidad_arrendatario", Etiqueta("nacionalidad_arrendatario"))
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=4}
+
+grafico_barras(datos, "nacionalidad_arrendatario")
+```
+
+## Tipo de arrendamiento
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "tipo_de_arrendamiento", Etiqueta("tipo_de_arrendamiento"))
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=4}
+
+grafico_barras(datos, "tipo_de_arrendamiento")
+```
+
+
+## Provincia y municipio 
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "provincia_806", "Provincia")
+```
+<br>
+Si ordenamos los datos atendiendo al número de casos
+```{r results="asis"}
+pinta_tabla(datos, "provincia_806", "Provincia", orden="SI")
+```
+
+```{r results="asis", fig.height=5, fig.width=5}
+
+grafico_barras(datos, "provincia_806")
+```
+Si representamos las barras ordenadas
+
+```{r results="asis", fig.height=5, fig.width=5}
+
+datos$prov_aux <- fct_infreq(datos$provincia_806)
+grafico_barras(datos, "prov_aux", "Provincia (Modelo 806)")
+```
+El ranking con los 25 municipios con más alquileres registrados 
+
+
+```{r results="asis"}
+n_ranking <- 25
+munic_n_mayores <- datos %>% 
+  group_by(municipio_806) %>% 
+  summarise(n=n()) %>% 
+  arrange(desc(n)) %>% 
+  head(n_ranking) 
+
+munic_n_mayores <- munic_n_mayores %>% 
+  mutate(municipio_806 = factor(municipio_806,
+                    levels = munic_n_mayores$municipio_806[order(munic_n_mayores$n)])
+  )
+
+munic_n_mayores %>%   
+  flextable() %>%  
+  set_header_labels(n = "Casos",
+                    municipio_806 = "Municipio") %>% 
+  colformat_double() %>% 
+  autofit() %>% 
+  border_remove() %>% 
+  align(align = "left", j = 1, part = "all") %>% 
+  hline(part = "header", i = 1, border = border_style1)  
+
+```
+
+```{r results="asis", fig.height=8, fig.width=6}
+
+ggplot(munic_n_mayores, aes(x = municipio_806, y = n)) +
+  geom_bar(stat="identity", fill = "cornsilk1", color = "cornsilk2") +
+  #geom_text(stat = "count", aes(label = ..count..), vjust = +0.5, size = 3, color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = Etiqueta("municipio_806")) +
+  coord_flip() +
+  theme_minimal() 
+```
+
+Se va a construir un informe específico sobre la distribución de la información por muncipios y provincias.
+
+## Duración del contrato
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "f.durac_contrato", "Duración del contrato")
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=4}
+
+grafico_barras(datos, "f.durac_contrato","Duración del contrato")
+```
+
+## Fecha de inicio del contrato
+<br>  
+```{r results="asis", fig.height=5, fig.width=7}
+# Gráfico de barras con etiquetas de altura
+ggplot(datos, aes(x = fecha_devengo)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  # geom_text(stat = "count", aes(label = ..count..),
+  #           vjust = +0.5, size = 3,
+  #           color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Fecha de inicio de contrato") +
+  theme_minimal()
+```
+<br>  
+Analizamos la fecha de inicio agrupando por meses.
+<br>  
+```{r results="asis"}
+datos$mes_devengo <- lubridate::month(datos$fecha_devengo,
+                                      label = TRUE,
+                                      abbr = FALSE)
+
+pinta_tabla(datos, "mes_devengo", "Mes de inicio de contrato")
+```
+)
+
+<br>  
+
+```{r results="asis", fig.height=5, fig.width=7}
+
+datos$mes_devengo <- lubridate::month(datos$fecha_devengo,
+                                      label = TRUE,
+                                      abbr = TRUE)
+ggplot(datos, aes(x = mes_devengo)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  geom_text(stat = "count", aes(label = ..count..),
+            vjust = +0.5, size = 3,
+            color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Mes de inicio contrato") +
+  theme_minimal() #+
+  #theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+<br>  
+Ahora analizamos agrupando por día del mes.
+<br>  
+```{r results="asis", fig.height=5, fig.width=7}
+datos$dia_devengo <- lubridate::day(datos$fecha_devengo)
+
+
+# Gráfico de barras
+ggplot(datos, aes(x = dia_devengo)) +
+  geom_bar(aes(y = (..count..)), fill = "cornsilk1", color = "cornsilk2") +
+  #geom_text(stat = "count", aes(label = ..count..),
+  #          vjust = +0.5, size = 3,
+  #          color = "cornsilk4") +
+  labs(x = "", 
+       y = "Frecuencia",
+       title = "Día del mes que inicia de contrato") +
+  theme_minimal()
+```
+  
+## Número de habitaciones
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "f.hab", "Nº de habitaciones")
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=4}
+
+grafico_barras(datos %>% filter(!is.na(f.hab)), "f.hab", "Nº de habitaciones")
+```
+ 
+## Importe de la renta del alquiler
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "f.renta_alq", "Renta mensual de alquiler")
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=6}
+
+grafico_barras(datos , "f.renta_alq", "Renta mensual de alquiler")
+```
+ 
+## Superficie de la vivienda
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "f.super", "Superficie vivienda (m2)")
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=6}
+
+grafico_barras(datos , "f.super", expression("Superficie de vivienda (m"^"2"~")"))
+```
+
+## Renta mensual por metro cuadrado
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "f.renta_m2", "Renta (€/m2)")
+```
+<br>
+
+```{r results="asis", fig.height=4, fig.width=6}
+
+grafico_barras(datos , "f.renta_m2", expression("Renta (€/m"^"2"~")"))
+```
+
+## Antigüedad de la vivienda
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "f.antig_bi", "Antigüedad de la vivienda")
+```
+<br>
+
+```{r results="asis", fig.height=4, fig.width=6}
+
+grafico_barras(datos , "f.antig_bi", "Antigüedad de la vivienda")
+```
+
+## Tipología constructiva
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "f.tipolog", "Tipología constructiva")
+```
+<br>
+
+```{r results="asis", fig.height=4, fig.width=4}
+
+grafico_barras(datos , "f.tipolog", "Tipología constructiva")
+```
+<br> 
+
+## Tamaño del municipio en que se encuentra la vivienda
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "f.tam_pob", "Tamaño poblacional (Habitantes)")
+```
+<br>
+
+```{r results="asis", fig.height=5, fig.width=6}
+
+grafico_barras(datos , "f.tam_pob", "Tamaño poblacional (Habitantes)")
+```
+
+## Jerarquía en el POTA del municipio en que se encuentra la vivienda
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "pota.jerarquia", "Jerarquía en el POTA")
+```
+<br>  
+```{r results="asis", fig.height=5, fig.width=6}
+# grafico con valores absolutos
+ggplot(datos,
+       aes(x = pota.jerarquia)) +
+  geom_bar(aes (y = ..count..),
+           fill = "cornsilk1",
+           color = "cornsilk2",
+           stat = "count",
+           na.rm = FALSE ) +   # no produce ningún efecto aunque el manual diga lo contario
+  labs(x = "", y = "Casos", title = "Jerarquía en el POTA") +
+  geom_text(stat = "count", aes(y = (..count..), 
+                                label = (..count..)),
+            vjust = +0.5, size = 3, color = "cornsilk4")  +
+  theme_minimal() +
+  scale_x_discrete(labels = str_wrap(c(levels(datos$pota.jerarquia), "No especificado"),width= 14))
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+
+\n B) Infraestructura y oferta deportiva publico/privada del municipio
+the first line\nthe second line
+**B.1. Introducción**
+
+<br>
+
+i)  Tasa de instalaciones deportivas. Número de habitantes entre el total de instalaciones deportivas del municipio.
+
+<!-- -->
+
+## Calidad constructiva
+<br>
+La calidad constructiva de las construcciones es recogida en catastro con un valor numérico que va de 1 a 9, de mayor a menor calidad. Excepcionalmente, también existen calidades superiores que se recogen con valores A, B y C.
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "calidad", "Calidad constructiva")
+```
+<br>
+
+```{r results="asis", fig.height=4, fig.width=6}
+
+grafico_barras(datos , "calidad", "Calidad constructiva")
+```
+<br> 
+
+## Piscina
+<br>
+Con la información catastral es posible distinguir las viviendas en cuya parcela existe una vivienda, con independencia de que ésta pertenezca o corresponda a la vivienda.
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "h2o", "Piscina en parcela")
+```
+<br>
+
+```{r results="asis", fig.height=4, fig.width=6}
+
+grafico_barras(datos , "h2o", "Piscina en parcela")
+```
+<br> 
+
+
+
+## Espacio abierto
+<br>
+Con la información catastral es posible distinguir las viviendas en cuya parcela existe un espacio abierto, con independencia de que éste pertenezca o corresponda a la vivienda.
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "ea", "Espacio abierto")
+```
+<br>
+
+```{r results="asis", fig.height=4, fig.width=6}
+
+grafico_barras(datos , "ea", "Espacio abierto")
+```
+<br> 
+
+
+
+
+## Garaje
+<br>
+Con la información catastral es posible distinguir las viviendas en cuya parcela existe un garaje, con independencia de que éste pertenezca o corresponda a la vivienda.
+<br>  
+```{r results="asis"}
+pinta_tabla(datos, "app", "Garaje")
+```
+<br>
+
+```{r results="asis", fig.height=4, fig.width=6}
+
+grafico_barras(datos , "app", "Garaje")
+```
+<br> 
+
+

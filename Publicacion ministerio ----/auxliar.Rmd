@@ -1,0 +1,145 @@
+```{r}
+# vivienda colectiva provincia
+
+# datos_colectiva <- datos %>% filter(f.tipolog == "Unifamiliar") #Plurifamiliar
+
+t <- genera_resumen_provincias ( datos)  # Solo provincias
+t_flex <- resumen_a_flex(t)
+t_flex
+```
+## Gráfico ránking por provincias. Precio medio m2 al mes
+
+```{r  fig.id="plot", fig.cap="Ranking por provincias", fig.height = 2.4 , fig.width = 6}
+grafico_ranking(t, tipo = preciom2_M)
+```
+## Gráfico ránking por provincias. Renta mensual del alquiler
+```{r  fig.id="plot", fig.cap="Ranking por provincias", fig.height = 2.4 , fig.width = 6}
+grafico_ranking(t, tipo = preciomes_M)
+```
+## Gráfico ránking por provincias. Superficie de vivienda
+```{r  fig.id="plot", fig.cap="Ranking por provincias", fig.height = 2.4 , fig.width = 6}
+grafico_ranking(t, tipo = superficie_M)
+```
+
+## Gráfico ránking por provincias. Precio medio m2 al mes
+```{r fig.id="plot", fig.cap="Ranking por provincias", fig.height = 3 , fig.width = 6}
+genera_grafico_apilado(t, "preciom2")
+```
+## Gráfico ránking por provincias. Renta mensual del alquiler
+```{r fig.id="plot", fig.cap="Ranking por provincias", fig.height = 3 , fig.width = 6}
+genera_grafico_apilado(t, "preciomes")
+```
+
+## Gráfico ránking por provincias. Superficie de vivienda
+```{r fig.id="plot", fig.cap="Ranking por provincias", fig.height = 3 , fig.width = 6}
+genera_grafico_apilado(t, "superficie")
+```
+
+para vivieda colectiva. Andalucía, provincia y municipios
+
+```{r}
+# vivienda colectiva municipio
+
+# datos_colectiva <- datos %>% filter(f.tipolog == "Plurifamiliar")
+t <- genera_resumen_municipios ( datos)
+
+t_flex <- resumen_a_flex(t)
+
+#> Calcula m, media aritmética de las medianas municipales
+#>  (no incluye provincias ni comunidad)
+m <- t %>% 
+  filter(nombre != "") %>% 
+  summarise(media = mean(preciom2_M)) %>% 
+  pull() %>% 
+  round(1)
+
+#> Da color a las celdas del valor del precio medio de la renta x m2 
+#> usando la función my_color_fun
+
+t_flex %>% 
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+8r7
+
+
+
+```
+
+
+```{r leyenda_colores}
+# Definir el df que servirá como leyenda
+color <- c(m+3.5, m+1.5, m, m-1.5, m-3.5)
+
+valores <- c(glue("> {m+3}"),
+             glue("({m+1} - {m+3}]"),
+             glue("({m-1} - {m+1}]"),
+             glue("({m-3} - {m-1}]"),
+             glue("<= {m-3}"))
+
+# Definir el vector de descripciones
+descripcion <- c("3 o más € de la media de los municipios",
+                  "Entre 1 y 3 € más de la media de los municipio",
+                  paste("En la media +/- 1 € (Media =",m,"€)"),
+                  "Entre 1 y 3 € menos de la media de los municipio", 
+                  "3 o menos € de la media de los municipios")
+
+# Crear el dataframe
+df <- data.frame(color = color, Valores = valores, descripcion = descripcion)
+
+
+
+# Ver el dataframe resultante
+flextable(df, col_keys = c("Valores","descripcion")) %>% 
+  fontsize(size = 9, part = "all") %>% 
+  set_header_labels("Valores" = "Renta €/m2 mes" ,descripcion = "") %>% 
+  autofit() %>% 
+  border_remove() %>% 
+  align(j="Valores", align = "center", part = "all") %>% 
+  hline(part = "header", border = border_style1)  %>%  
+  bg(j = "Valores", bg = my_color_fun(df$color) , part = "body")
+
+```
+
+
+
+```{r}
+t <- genera_resumen_municipios ( datos)
+t_flex <- resumen_a_flex(t)
+t_flex
+
+```
+
+```{r fig.id="plot", fig.cap="Ranking por provincias", fig.height = 5 , fig.width = 6}
+# Gráfico territorios > Mediana de Andalucía
+# t <- t %>% 
+#   mutate(preciom2_M = as.numeric((gsub(",", ".", preciom2_M))))
+
+medianaAndalucia <- t %>% 
+  filter(territorio == "Andalucía") %>%
+  pull(preciom2_M)
+
+mayores <- t %>% 
+  filter(preciom2_M >= medianaAndalucia) 
+
+
+grafico_ranking(mayores, preciom2_M) +
+theme(axis.text = element_text(size = 8))  # Cambiar el tamaño del texto de los ejes
+```
+
+```{r}
+grafico_ranking(mayores, superficie_M)+
+theme(axis.text = element_text(size = 8))  # Cambiar el tamaño del texto de los ejes
+```
+
+```{r}
+grafico_ranking(mayores, preciomes_M)+
+theme(axis.text = element_text(size = 8))  # Cambiar el tamaño del texto de los ejes
+```
+```{r}
+# vivienda colectiva barrio
+
+# datos_colectiva <- datos %>% filter(f.tipolog == "Unifamiliar") #Plurifamiliar
+
+t <- genera_resumen_barrio( datos)  # Solo provincias
++t_flex <- resumen_a_flex(t)
+t_flex
+```

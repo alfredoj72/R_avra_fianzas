@@ -1,0 +1,148 @@
+---
+output: 
+  officedown::rdocx_document:
+    reference_docx: word template/pandoc_template.docx    
+    tables:
+      style: Table
+      layout: autofit
+      width: 1.0
+      caption:
+       style: Table Caption
+       pre: 'Tabla '
+       sep: ': '
+      conditional:
+       first_row: true
+       first_column: false
+       last_row: false
+       last_column: false
+       no_hband: false
+       no_vband: true
+    plots:
+      align: center
+      caption:
+       style: Image Caption
+       pre: 'Figura '
+       sep: ': '
+params:
+  anyoID:
+    input: text
+    label: "Informe anual correspondiente al año:"
+    value: "2022"
+---
+
+```{r setup, include=FALSE}
+# instala y carga los paquetes necesarios
+paquetes_necesarios = c("tidyverse", "flextable", 
+                        "officer", "sf", "readxl", "glue", "naniar") 
+# c( "ggplot2","classInt")
+
+for (paq in paquetes_necesarios){
+  if (!(paq %in% rownames(installed.packages()))){
+    install.packages(paq, dependencies = T)}
+  print(paq)
+  library(paq, character.only = T)
+}
+rm(paq, paquetes_necesarios)
+
+# library(tmap)
+# library(magrittr)
+# library(mschart)
+
+source("carga_datos_y_funciones.R")
+
+knitr::opts_chunk$set(fig.align = 'center',
+                      echo = FALSE,    #no muestra el código R en la salida
+                      warning = FALSE, #no muestra advertencias en la salida
+                      message = FALSE, #no muestra mensajes de R en la salida
+                      include = TRUE,  # muestra los resultados generados por 
+                                       # los chunk de código R
+                      fig.asp = 0.7,   #Establece la proporción de aspecto que tendrán las imágenes generadas en R por defecto. En cada chunk se especificará fig.width o fit.height para completar la información
+                      dpi = 300)
+
+```
+
+
+<!-- 
+https://ardata-fr.github.io/officeverse/index.html
+La generación de documentos word (o power point) con R se puede realizar:
+1) Con el paquete officer, en cuyo caso se utilizan un conjunto de funciones de R. 
+2) Con el paquete officedown en cuyo caso se utila la sintaxis de rmarkdown
+seguir https://rpubs.com/gustavomtzv/867466 
+-->
+
+<!--
+{r, eval = FALSE }
+library(officer)
+# consulto los estilos existentes en el fichero plantilla
+doc <- read_docx(path="./word template/pandoc_template.docx") 
+# ojo, con Rmd accedo al directorio Publicaciones y con R al de trabajo
+doc <- read_docx(path="./Publicaciones/word template/pandoc_template.docx")
+estilos <- officer::styles_info(doc)  #muestra los estilos existentes
+-->
+
+<br>
+  
+<br>
+  
+<br>
+![A nice image.](./images/portada.jpg){width=90%}
+<br>
+
+<br>
+
+::: {custom-style="Título AMS"}
+Actividad estadística de precios del alquiler basada en el registro de fianzas.  
+
+Análisis exploratorio de datos.
+:::
+
+:::{custom-style="Título AMS 2"}
+Año: `r params$anyoID`
+:::
+
+<!--
+Lo siguiente no funciona redimensionando la imagen si la salida es word
+{r echo = FALSE, out.width = '80%', fig.align ='center'  }
+knitr::include_graphics("./images/portada.jpg")
+
+Tb valdría
+![](./images/portada.jpg){width="500"}
+-->
+
+\newpage
+<br>  
+
+<br>  
+
+<br>
+
+<!-- 
+{r}
+block_toc(level = 2)
+-->
+
+\newpage
+
+<br>
+
+# Justificación
+# Metodología
+# Completitud de la información 
+```{r llamada_test , child=c('00.1_completitud.Rmd')}
+```
+
+# Resultados de la conexión con los datos catastrales
+```{r llamada_test , child=c('00.2_resumen_inicial.Rmd')}
+```
+
+# Analisis univariante
+
+```{r llamada_test , child=c('00.3_analisis_univariante.Rmd')}
+```
+
+
+
+
+
+
+                  

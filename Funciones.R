@@ -1311,9 +1311,10 @@ preparacion_datos <- function(datos_entrada){
   adsc_mun <- adsc_mun %>% 
     mutate(codigo_municipal = codigo,
            pota.jerarquia = jerarquía_sistema_ciudades,
+           pota.tipo_unidad = tipo_de_unidad_territorial,
            pota.unidad_territorial = unidad_territorial) %>% 
     filter(!is.na(provincia)) %>% 
-    select(codigo_municipal, pota.jerarquia, pota.unidad_territorial)
+    select(codigo_municipal, pota.jerarquia, pota.tipo_unidad, pota.unidad_territorial)
   
   datos <-  left_join(datos, 
                       adsc_mun, 
@@ -1843,12 +1844,18 @@ Pasar_capas_shp_a_R <- function(){
     group_by(barrio.distrito, cod_mun, municipio) %>%
     summarize(.groups = "drop") 
   
+# Secciones del DERA  
+# secciones_sf <- st_read(dsn = "./datos_aux/13_27_SeccionCensal.shp", quiet = TRUE)
   
-  secciones_sf <- st_read(dsn = "./datos_aux/13_27_SeccionCensal.shp", quiet = TRUE)
+ #Cargar el seccionado del padrón de 2022.
+  secciones_sf <- st_read(dsn = "./datos_aux/secciones_censales_2022_01_padron.shp",
+                          quiet = TRUE)
+  
   
   secciones_sf <- secciones_sf %>% 
-    mutate(seccion.codigo = codigo,
-           seccion.distrito = substr(codigo,1,7)) %>% 
+    mutate(cod_mun = substr(codsecc,1,5),
+           seccion.codigo = codsecc,
+           seccion.distrito = substr(codsecc,1,7)) %>% 
     select(cod_mun, municipio, seccion.codigo, seccion.distrito)
   
   distritos_sf <- secciones_sf %>%

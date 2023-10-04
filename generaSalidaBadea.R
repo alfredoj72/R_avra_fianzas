@@ -11,14 +11,19 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load(sf,tidyverse,writexl,readxl)
 
 
-rm(list =ls()) 
-load("./datos_output/datos_para_analisis_2022.RData")
-datos <- datos_para_analisis_2022[["datos"]]
-rm(datos_para_analisis_2022)
-datos <- as.data.frame(datos)
-datos <- st_drop_geometry(datos)
-str(datos)
+# rm(list =ls()) 
+# load("./datos_output/datos_para_analisis_2022.RData")
+# datos <- datos_para_analisis_2022[["datos"]]
+# rm(datos_para_analisis_2022)
+# datos <- as.data.frame(datos)
+# datos <- st_drop_geometry(datos)
+# str(datos)
 
+rm(list =ls()) 
+load("./datos_output/datos_para_analisis_todos.RData")
+datos_con_geometria <- datos_analisis
+datos <- st_drop_geometry(datos_analisis)
+rm(datos_analisis)
 
 ###################################################################
 # 1 ###############################################################
@@ -33,16 +38,16 @@ str(datos)
 #> o lo hago uniendo todos los años antes de pasar este scritp
 #>  y el campo anyo lo meto siempre con los pivotes.
 
-datos$anyo <- lubridate::year(datos$fecha_devengo)
+#datos$anyo <- lubridate::year(datos$fecha_devengo)
 
 # old lista_campos
 dimensiones <- c("anyo", "f.durac_contrato","f.renta_alq", "f.renta_m2",
-                  "sexo_arrendador", "f.persona_fj", "sexo_arrendatario",
-                  "nacionalidad_arrendatario", "tipo_de_arrendamiento",
-                  "f.super","f.hab","f.tipolog", "f.antig_bi",
-                  "f.tam_pob", "pota.unidad_territorial")
+                 "sexo_arrendador", "f.persona_fj", "sexo_arrendatario",
+                 "nacionalidad_arrendatario", "tipo_de_arrendamiento",
+                 "f.super","f.hab","f.tipolog", "f.antig_bi",
+                 "f.tam_pob", "pota.tipo_unidad","pota.unidad_territorial",
+                 "pota.jerarquia")
 
-# meter "f.super", "f.renta_alq", "f.renta_m2" ?
 
 # el anyo es un dimensión especial porque siempre hay que pivotar sobre ella,
 # ya que en a BADEA todos los datos contiene rellena la columna de datos
@@ -121,14 +126,14 @@ genera_BADEA <- function(df, campo_fijo = NULL, combinacion_campos){
       # que se quieran calcular para cada grupo: n(), mediana, Q25, Q75 de los campos
       summarise(n = n(),
                 mediana_precio_mes = median(importe_de_la_renta),
-                p25_precio_mes = quantile(importe_de_la_renta, 0.25),
-                p75_precio_mes = quantile(importe_de_la_renta, 0.75),
+                p25_precio_mes = quantile(importe_de_la_renta, probs = 0.25, type = 4),
+                p75_precio_mes = quantile(importe_de_la_renta, probs = 0.75, type = 4),
                 mediana_superficie = median(stotalocal_14),
-                p25_superficie = quantile(stotalocal_14, 0.25),
-                p75_superficie = quantile(stotalocal_14, 0.75),
+                p25_superficie = quantile(stotalocal_14, probs = 0.25, type = 4),
+                p75_superficie = quantile(stotalocal_14, probs = 0.75, type = 4),
                 mediana_precio_m2 = median(renta_m2),
-                p25_precio_m2 = quantile(renta_m2, 0.25),
-                p75_precio_m2 = quantile(renta_m2, 0.75),
+                p25_precio_m2 = quantile(renta_m2, probs = 0.25, type = 4),
+                p75_precio_m2 = quantile(renta_m2, probs = 0.75, type = 4),
                 campos = paste(campos_a_usar, collapse = " "),
                 pivote = paste(campo_fijo, collapse = " "),
                 .groups = "drop") 
@@ -176,14 +181,14 @@ datos_badea <- datos_badea %>%
   )
   )
 
-# Diccionario para cambiar el contenido de las variables
-rename_vec <- cambio_modelo_datos %>% 
-  filter (is.na(categ) & is.na(cod)) %>% pull(var,descrip)
-
-# Renombra las variables (creo que no es necesario, que BADEA reconoce las variables
-# por el orden en que se introducen)
-datos_badea <- datos_badea %>% 
-  rename(all_of(rename_vec))
+# # Diccionario para cambiar el contenido de las variables
+# rename_vec <- cambio_modelo_datos %>% 
+#   filter (is.na(categ) & is.na(cod)) %>% pull(var,descrip)
+# 
+# # Renombra las variables (creo que no es necesario, que BADEA reconoce las variables
+# # por el orden en que se introducen)
+# datos_badea <- datos_badea %>% 
+#   rename(all_of(rename_vec))
 
 }
 
@@ -192,8 +197,8 @@ datos_badea <- datos_badea %>%
 ######################################################################
 # y ejecuto
 
-# puedo incluir la unidad territorial POTA junto al municipio, esto no aporta
-# filas, pero no se si es interesante para algo (preguntar a Esther)
+#> el año es pivote siempre.Para cada ambito territorial pivota su campo, y el
+#> resto son dimensiones 
 
 # dimensiones_sin_POTA <- dimensiones[!dimensiones %in% 
 #                                       c("pota.unidad_territorial", "anyo")]
@@ -221,12 +226,30 @@ BADEA_andalucia <- genera_BADEA(datos_para_BADEA, "anyo", #antes NULL
 tabla_para_badea <- bind_rows(BADEA_mun, 
                         BADEA_prov,
                         BADEA_andalucia) %>% 
-              filter(n>=10) %>% 
-              Recodifica_de_R_a_BADEA()
+                filter(n>=10) %>% 
+                
+                #elimino registros en los que se replica la información de tipo de unidad y unidad territorial
+                #en la tabla de salida ambos campos son una única dimensión
+                filter(!(!is.na(pota.tipo_unidad) & !is.na(pota.unidad_territorial))) %>%  
+  
+                Recodifica_de_R_a_BADEA() %>% 
+               
+                #Construye el nuevo campo que contiene información del tipo de unidad y de la unidad territorial
+                mutate(pota = coalesce(pota.tipo_unidad, pota.unidad_territorial),
+                       pota.tipo_unidad = NULL,
+                       pota.unidad_territorial = NULL) %>% 
+                relocate(pota, .before = "pota.jerarquia") %>% 
+                relocate(territorio, .before = "pota") %>% 
+ 
+                select(-c(campos,pivote))
 
-#> el año es pivote siempre.Para cada ambito territorial pivota su campo, y el
-#> resto son dimensiones 
+# #comprobacion no hay combinaciones de campos duplicadas
+# solo_dimensiones <- tabla_para_badea %>% select(-c(n:p75_precio_m2))
+# duplicados <- solo_dimensiones[duplicated(solo_dimensiones), ]
 
+
+write_xlsx(tabla_para_badea, "./datos_output/tabla_para_badea.xlsx")
+write.csv(tabla_para_badea, file = "./datos_output/tabla_para_badea.csv", row.names = FALSE)
 
   
 

@@ -1,0 +1,42 @@
+---
+title: "Informe Registro de fianzas del alquiler"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(
+  fig.align = 'center',
+  echo = FALSE,    #no muestra el código R en la salida
+  warning = FALSE, #no muestra advertencias en la salida
+  message = FALSE, #no muestra mensajes de R en la salida
+  include = TRUE,  # muestra los resultados generados por 
+# fig.asp = 0.7,   #Establece la proporción por defecto para graficos generados por R
+  dpi = 300,
+  fig.width=8,
+  fig.height=8
+)
+
+#> Con el fig.width y fig.heigth se establece el tamaño en pulgadas de la 
+#> imagen generada.
+#> Con out.width y out.height se establece el tamaño que tomará la imagen ya creada al 
+#> introducirla en el fichero de salida.
+```
+
+
+```{r}
+#> meter
+#> r "nombre con espacios", fig.width=6, fig.height=9, fig.id="plot", fig.cap="boxplot imported from images folder", echo=FALSE}
+#> 
+```
+\pagenumbering{arabic}
+
+\newpage
+
+alfredo
+```#{r llamada_informe , child=c('Informe_barrios_aux.Rmd')}
+```
+

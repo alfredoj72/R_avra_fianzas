@@ -1,0 +1,320 @@
+---
+title: "Informe Registro de fianzas del alquiler"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(
+  fig.align = 'center',
+  echo = FALSE,    #no muestra el código R en la salida
+  warning = FALSE, #no muestra advertencias en la salida
+  message = FALSE, #no muestra mensajes de R en la salida
+  include = TRUE,  # muestra los resultados generados por 
+# fig.asp = 0.7,   #Establece la proporción por defecto para graficos generados por R
+  dpi = 300,
+  fig.width=8,
+  fig.height=8
+)
+
+#> Con el fig.width y fig.heigth se establece el tamaño en pulgadas de la 
+#> imagen generada.
+#> Con out.width y out.height se establece el tamaño que tomará la imagen ya creada al 
+#> introducirla en el fichero de salida.
+```
+
+```{r}
+#> meter
+#> r "nombre con espacios", fig.width=6, fig.height=9, fig.id="plot", fig.cap="boxplot imported from images folder", echo=FALSE}
+#> 
+```
+
+
+
+```{r}
+# carga paquetes
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, flextable,here , sf, readxl,sf, glue, RColorBrewer, 
+               ggplot2, cowplot)
+
+# Lee los datos
+load(here("datos_output","datos_para_analisis_todos.RData"))
+
+```
+
+```{r}
+# Parámetros flextable
+init_flextable_defaults() #reinicia los valores por defecto del paq flextable
+set_flextable_defaults(
+  big.mark = ".",
+  decimal.mark = ",",
+  digits = 1,
+  # theme_fun = theme_box,
+  font.family = "calibri",  
+  line_spacing = 1.3,
+  font.color = "grey8", # "#333333",
+  font.size = 11,
+  padding.top = 3, padding.bottom = 3,
+  padding.left = 4, padding.right = 4,
+  text.align = "c",
+  border.color = "grey60", # "#333333",
+  padding = 4,
+  na_str = ""
+)
+
+# define el estilo del borde
+border_style1 = officer::fp_border(color="grey60", width=2)
+border_style2 = officer::fp_border(color="grey60", width=0.5)
+```
+
+
+```{r}
+# Filtra el año a utilizar. Aqui poner un combo
+anyos <- unique(datos_analisis$anyo)
+
+anyo_elegido <- svDialogs::dlg_list(choices = anyos,
+                                    preselect = max(anyos),
+                                    title = "Elige el año de informe:",
+                                    rstudio = getOption("svDialogs.rstudio", FALSE),
+                                    gui = .GUI)$res
+
+datos <- st_drop_geometry(datos_analisis) %>% 
+  filter(anyo == anyo_elegido)
+rm(datos_analisis)
+```
+
+```{r}
+## Lee las funciones comunes
+source(here("Informes_publicaciones","Funciones_para_publicaciones.R"))
+# Elabora listado de tablas por municipio y listado de mapas por municipio
+source(here("Informes_publicaciones","Elaboracion_contenidos_barrios.R"))
+```
+
+\pagenumbering{arabic}
+
+![A nice image.](./images/portada.jpg){width="90%"}
+
+# **Actividad estadística de precios del alquiler basada en el registro de fianzas.**
+
+## Análisis por barrios.
+
+## Año 2022.
+
+\newpage
+
+## Almería
+
+```{r}
+   lista_mapas_barrios[["Almería"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Almería"]]
+```
+
+\newpage
+
+## Cádiz
+
+```{r}
+   lista_mapas_barrios[["Cádiz"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Cádiz"]]
+```
+
+\newpage
+
+## Algeciras
+
+```{r}
+   lista_mapas_barrios[["Algeciras"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Algeciras"]]
+```
+
+\newpage
+
+## Jerez de la Frontera
+
+```{r}
+   lista_mapas_barrios[["Jerez de la Frontera"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Jerez de la Frontera"]]
+```
+
+\newpage
+
+## Córdoba
+
+```{r}
+   lista_mapas_barrios[["Córdoba"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Córdoba"]]
+```
+
+\newpage
+
+## Granada
+
+```{r}
+   lista_mapas_barrios[["Granada"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Granada"]]
+```
+
+\newpage
+
+## Huelva
+
+```{r}
+   lista_mapas_barrios[["Huelva"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Huelva"]]
+```
+
+\newpage
+
+## Jaén
+
+```{r}
+   lista_mapas_barrios[["Jaén"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Jaén"]]
+```
+
+\newpage
+
+## Málaga
+
+```{r}
+   lista_mapas_barrios[["Málaga"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Málaga"]]
+```
+
+\newpage
+
+## Marbella
+
+```{r}
+   lista_mapas_barrios[["Marbella"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Marbella"]]
+```
+
+\newpage
+
+## Sevilla
+
+```{r}
+   lista_mapas_barrios[["Sevilla"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Sevilla"]]
+```
+
+\newpage
+
+## Dos Hermanas
+
+```{r}
+   lista_mapas_barrios[["Dos Hermanas"]]
+```
+
+```{r fig.width = 2, fig.height = 2, fig.align = 'left'}
+ggdraw(plot_grid(legend))
+```
+
+\newpage
+
+```{r }
+    lista_flex_barrios[["Dos Hermanas"]]
+```

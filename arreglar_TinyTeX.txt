@@ -1,0 +1,45 @@
+Los errores los veo en el log que se crea cuando se queda colgado al fabricar un pdf
+! LaTeX Error: File `multirow.sty' not found.
+! LaTeX Error: File `colortbl.sty' not found.
+
+Leo que debe resolverse al instalar dichos complementos de latex. Para ello debo hacer desde una ventana del msdos:
+tlmgr install multirow 
+tlmgr install colortbl 
+
+cuando ejecuto el bat que contiene la linea
+tlmgr install multirow.sty >log
+obtengo:
+
+Unable to download the checksum of the remote TeX Live database,
+but found a local copy, so using that.
+
+You may want to try specifying an explicit or different CTAN mirror,
+or maybe you need to specify proxy information if you're behind a firewall;
+see the information and examples for the -repository option at
+https://tug.org/texlive/doc/install-tl.html
+(and in the output of install-tl --help).
+
+tlmgr.pl: package repository https://mirror.ctan.org/systems/texlive/tlnet (not verified: unknown)
+[1/1, ??:??/??:??] install: multirow [3k]
+tlmgr.pl: package log updated: C:/Users/alfredoj.martin/AppData/Roaming/TinyTeX/texmf-var/web2c/tlmgr.log
+
+Cuando ejecuto
+tlmgr install colortbl >log
+no obtengo nada
+
+
+Otras alternativas son desde dentro de R
+
+# intenta arreglar los problemas de descarga e instalación de paquetes
+tinytex:::install_prebuilt()
+
+
+
+# o tambien instalar manualmente los paquetes concretos que faltan
+tinytex::parse_install(
+  text = "! LaTeX Error: File `multirow.sty' not found."
+)
+
+tinytex::tlmgr_install("multirow")
+
+

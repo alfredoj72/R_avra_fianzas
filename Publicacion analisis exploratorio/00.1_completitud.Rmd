@@ -1,0 +1,22 @@
+
+El número de total de registros de fianzas utilizados en el presente analisis
+exploratorio de datos es `r to_int(sum(tabla_frecuencias$'Frec. Absoluta'))`. 
+
+El porcentaje de datos que faltan es del `r to_porcentaje(pct_miss(datos_originales))`%. El `r to_porcentaje(pct_miss_case(datos))` de los registros estan incompletos. El gráfico que representa el porcentaje de valores ausentes en cada variables es el siguiente:
+  
+```{r fig.height=8, fig.width=6, fig.id="grafico", fig.cap="Valores ausentes por variable"}
+datos_originales %>% 
+  gg_miss_var( show_pct = TRUE)
+```
+
+Si consideramos los datos ausentes teniendo en cuenta tipo de entidad:
+```{r fig.height=8, fig.width=6, fig.id="grafico", fig.cap="Valores ausentes por variable para cada tipo de persona arrendador"}
+
+datos_originales %>% 
+  gg_miss_var(show_pct = TRUE, facet = tipo_persona_arrendador)
+
+# # Gráfico de valores faltantes en todo el dataframe
+# gg_miss_fct(datos_originales, tipo_persona_arrendador) + labs(title = "Valores no disponibles")
+```
+
+

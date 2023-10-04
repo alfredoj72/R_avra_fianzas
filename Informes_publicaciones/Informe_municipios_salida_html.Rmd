@@ -1,0 +1,223 @@
+---
+title: "Informe Registro de fianzas del alquiler"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: lumen
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(
+  fig.align = 'center',
+  echo = FALSE,    #no muestra el código R en la salida
+  warning = FALSE, #no muestra advertencias en la salida
+  message = FALSE, #no muestra mensajes de R en la salida
+  include = TRUE,  # muestra los resultados generados por 
+# fig.asp = 0.7,   #Establece la proporción por defecto para graficos generados por R
+  dpi = 300,
+  fig.width=8,
+  fig.height=8
+)
+
+#> Con el fig.width y fig.heigth se establece el tamaño en pulgadas de la 
+#> imagen generada.
+#> Con out.width y out.height se establece el tamaño que tomará la imagen ya creada al 
+#> introducirla en el fichero de salida.
+#> fig.id="plot", fig.cap="Ranking por provincias",
+```
+
+
+
+```{r}
+# # carga paquetes
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, flextable,here , sf, readxl,sf, glue, RColorBrewer,
+               ggplot2, cowplot, leaflet)
+# 
+ 
+# # Lee los datos
+load(here("datos_output","datos_para_analisis_todos.RData"))  ##comentar/descomentar 
+
+```
+
+```{r}
+ # Filtra el año a utilizar. Aqui poner un combo
+ anyos <- unique(datos_analisis$anyo)
+
+ anyo_elegido <- svDialogs::dlg_list(choices = anyos,
+                                     preselect = max(anyos),
+                                     title = "Elige el año de informe:",
+                                     rstudio = getOption("svDialogs.rstudio", FALSE),
+                                     gui = .GUI)$res
+
+ datos <- st_drop_geometry(datos_analisis) %>%
+ filter(anyo == anyo_elegido)
+#rm(datos_analisis)
+```
+
+```{r}
+# Parámetros flextable
+init_flextable_defaults() #reinicia los valores por defecto del paq flextable
+set_flextable_defaults(
+  big.mark = ".",
+  decimal.mark = ",",
+  digits = 1,
+  # theme_fun = theme_box,
+  font.family = "calibri",  
+  line_spacing = 1.3,
+  font.color = "grey8", # "#333333",
+  font.size = 11,
+  padding.top = 3, padding.bottom = 3,
+  padding.left = 4, padding.right = 4,
+  text.align = "c",
+  border.color = "grey60", # "#333333",
+  padding = 4,
+  na_str = ""
+)
+
+# define el estilo del borde
+border_style1 = officer::fp_border(color="grey60", width=2)
+border_style2 = officer::fp_border(color="grey60", width=0.5)
+```
+
+
+
+```{r}
+## Lee las funciones comunes
+source(here("Informes_publicaciones","Funciones_para_publicaciones.R"))
+# Elabora listado de tablas por municipio y listado de mapas por municipio
+source(here("Informes_publicaciones","Elaboracion_contenidos_municipios.R"))
+```
+
+![](./images/portada.jpg){width="100%"}
+
+# **Actividad estadística de precios del alquiler basada en el registro de fianzas.**
+
+ <font size="6"> Año `r anyo_elegido`.</font>
+   
+ <font size="6"> Análisis por municipios.</font>
+ 
+ 
+```{r leyenda_colores}
+m <- t_m %>%
+  filter(nombre != "") %>%
+  summarise(media = mean(preciom2_M)) %>%
+  pull() %>%
+  round(1)
+
+### leyenda colores tabla datos municipales
+# Definir el df que servirá como leyenda
+color <- c(m+3.5, m+1.5, m, m-1.5, m-3.5)
+
+valores <- c(glue("> {m+3}"),
+             glue("({m+1} - {m+3}]"),
+             glue("({m-1} - {m+1}]"),
+             glue("({m-3} - {m-1}]"),
+             glue("<= {m-3}"))
+
+# Definir el vector de descripciones
+descripcion <- c("3 o más € de la media de los municipios",
+                  "Entre 1 y 3 € más de la media de los municipio",
+                  paste("En la media +/- 1 € (Media =",m,"€)"),
+                  "Entre 1 y 3 € menos de la media de los municipio",
+                  "3 o menos € de la media de los municipios")
+
+# Crear el dataframe
+df <- data.frame(color = color, Valores = valores, descripcion = descripcion)
+
+
+
+# Ver el dataframe resultante
+flextable(df, col_keys = c("Valores","descripcion")) %>%
+  fontsize(size = 9, part = "all") %>%
+  set_header_labels("Valores" = "Renta €/m2 mes" ,descripcion = "") %>%
+  autofit() %>%
+  border_remove() %>%
+  align(j="Valores", align = "center", part = "all") %>%
+  hline(part = "header", border = border_style1)  %>%
+  bg(j = "Valores", bg = my_color_fun(df$color) , part = "body")
+
+```
+
+
+
+## Datos municipales por provincia
+### Almería
+
+```{r}
+construir_mapa_municipios(municipio_sf %>% filter(provincia == "Almería"))
+```
+
+```{r}
+lista_flex_provincias[["Almería"]]  %>%
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+```
+### Cádiz
+```{r}
+construir_mapa_municipios(municipio_sf %>% filter(provincia == "Cádiz"))
+```
+
+```{r}
+lista_flex_provincias[["Cádiz"]]  %>%
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+```
+### Córdoba
+```{r}
+construir_mapa_municipios(municipio_sf %>% filter(provincia == "Córdoba"))
+```
+
+```{r}
+lista_flex_provincias[["Córdoba"]]  %>%
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+```
+### Granada
+```{r}
+construir_mapa_municipios(municipio_sf %>% filter(provincia == "Granada"))
+```
+
+```{r}
+lista_flex_provincias[["Granada"]]  %>%
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+```
+### Huelva
+```{r}
+construir_mapa_municipios(municipio_sf %>% filter(provincia == "Huelva"))
+```
+
+```{r}
+lista_flex_provincias[["Huelva"]]  %>%
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+```
+### Jaén
+```{r}
+construir_mapa_municipios(municipio_sf %>% filter(provincia == "Jaén"))
+```
+
+```{r}
+lista_flex_provincias[["Jaén"]]  %>%
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+```
+### Málaga
+```{r}
+construir_mapa_municipios(municipio_sf %>% filter(provincia == "Málaga"))
+```
+
+```{r}
+lista_flex_provincias[["Málaga"]]  %>%
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+```
+### Sevilla
+```{r}
+construir_mapa_municipios(municipio_sf %>% filter(provincia == "Sevilla"))
+```
+
+```{r}
+lista_flex_provincias[["Sevilla"]]  %>%
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+```
+
+
