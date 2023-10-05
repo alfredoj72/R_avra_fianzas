@@ -88,9 +88,9 @@ rm(datos_analisis)
 
 ```{r}
 ## Lee las funciones comunes
-source(here("Informes_publicaciones","Funciones_para_publicaciones.R"))
+source(here("Informes_sintesis","Funciones_para_publicaciones.R"))
 # Elabora listado de tablas por municipio y listado de mapas por municipio
-source(here("Informes_publicaciones","Elaboracion_contenidos_barrios.R"))
+source(here("Informes_sintesis","Elaboracion_contenidos_barrios.R"))
 ```
 
 \pagenumbering{arabic}

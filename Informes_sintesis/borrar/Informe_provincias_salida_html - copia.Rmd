@@ -87,7 +87,7 @@ datos <- st_drop_geometry(datos_analisis) %>%
 
 ```{r}
 # Elabora listado de tablas por municipio y listado de mapas por municipio
-source(here("Informes_publicaciones","Elaboracion_contenidos_municipios.R"))
+source(here("Informes_sintesis","Elaboracion_contenidos_municipios.R"))
 ```
 
 \pagenumbering{arabic}

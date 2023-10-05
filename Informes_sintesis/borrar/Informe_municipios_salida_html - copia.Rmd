@@ -27,6 +27,7 @@ knitr::opts_chunk$set(
 #> imagen generada.
 #> Con out.width y out.height se establece el tamaño que tomará la imagen ya creada al 
 #> introducirla en el fichero de salida.
+#> fig.id="plot", fig.cap="Ranking por provincias",
 ```
 
 
@@ -39,7 +40,7 @@ knitr::opts_chunk$set(
 # 
  
 # # Lee los datos
-#descomentar load(here("datos_output","datos_para_analisis_todos.RData"))
+load(here("datos_output","datos_para_analisis_todos.RData"))  ##comentar/descomentar 
 
 ```
 
@@ -86,7 +87,7 @@ datos <- st_drop_geometry(datos_analisis) %>%
 
 ```{r}
 # Elabora listado de tablas por municipio y listado de mapas por municipio
-source(here("Informes_publicaciones","Elaboracion_contenidos_municipios.R"))
+source(here("Informes_sintesis","Elaboracion_contenidos_municipios.R"))
 ```
 
 \pagenumbering{arabic}
@@ -95,9 +96,9 @@ source(here("Informes_publicaciones","Elaboracion_contenidos_municipios.R"))
 
 # **Actividad estadística de precios del alquiler basada en el registro de fianzas.**
 
-## Análisis por barrios.
+## Análisis por provincias.
 
-## Año 2022.
+## Año `r anyo_elegido`.
 
 \newpage
 
@@ -123,44 +124,78 @@ grafico_ranking(t, tipo = preciomes_M)
 ```
 
 ## Gráfico ránking por provincias. Superficie de vivienda
-```{r  fig.id="plot", fig.cap="Ranking por provincias", fig.height = 2.4 , fig.width = 6}
+```{r  fig.height = 2.4 , fig.width = 6}
 grafico_ranking(t, tipo = superficie_M)
 ```
 
-### Importe medio de la renta mensual €/m2
+## Gráfico ránking por provincias. Precio medio m2 al mes
+```{r fig.height = 2.4 , fig.width = 6}
+genera_grafico_apilado(t, "preciom2")
+```
+  
+## Gráfico ránking por provincias. Renta mensual del alquiler
 ```{r  fig.height = 2.4 , fig.width = 6}
+genera_grafico_apilado(t, "preciomes")
+```
+
+## Gráfico ránking por provincias. Superficie de vivienda
+```{r  fig.height = 2.4 , fig.width = 6}
+genera_grafico_apilado(t, "superficie")
+```
+
+### Importe medio de la renta mensual €/m2
+```{r  fig.height = 3 , fig.width = 6}
 
 provincias_orden_mediana_renta_m2 <- with(datos, reorder(provincia_806, renta_m2, median))
 
 datos %>% 
   ggplot( aes(x=provincias_orden_mediana_renta_m2, y =renta_m2))+
   geom_boxplot( width = 0.5, fill = "cornsilk1", color = "cornsilk2",
-                linewidth = 0.8,      outlier.size = 0.7)+
+                linewidth = 0.6, outlier.size = 0.5, outlier.color = 0.4)+
   labs(x = "", y = "") +
   theme_minimal()+
   coord_cartesian(ylim = c(0, 15)) +
-    theme(panel.grid.major = element_blank())
+  theme(panel.grid.major = element_blank(),
+        text = element_text(size=9))
+ 
            
 ```
 
-<!-- ```{r} -->
-<!-- mapa_regional_municipios -->
-<!-- ``` -->
+### Importe de la renta mensual €
+```{r  fig.height = 3 , fig.width = 6}
 
-<!-- ## Gráfico ránking por provincias. Precio medio m2 al mes -->
-<!-- ```{r fig.id="plot", fig.cap="Ranking por provincias", fig.height = 3 , fig.width = 6} -->
-<!-- genera_grafico_apilado(t, "preciom2") -->
-<!-- ``` -->
-<!-- ## Gráfico ránking por provincias. Renta mensual del alquiler -->
-<!-- ```{r fig.id="plot", fig.cap="Ranking por provincias", fig.height = 3 , fig.width = 6} -->
-<!-- genera_grafico_apilado(t, "preciomes") -->
-<!-- ``` -->
+provincias_orden_mediana_renta <- with(datos, reorder(provincia_806, importe_de_la_renta, median))
 
-<!-- ## Gráfico ránking por provincias. Superficie de vivienda -->
-<!-- ```{r fig.id="plot", fig.cap="Ranking por provincias", fig.height = 3 , fig.width = 6} -->
-<!-- genera_grafico_apilado(t, "superficie") -->
-<!-- ``` -->
+datos %>% 
+  ggplot( aes(x=provincias_orden_mediana_renta, y =importe_de_la_renta))+
+  geom_boxplot( width = 0.5, fill = "cornsilk1", color = "cornsilk2",
+                linewidth = 0.6, outlier.size = 0.5, outlier.color = 0.4)+
+  labs(x = "", y = "") +
+  theme_minimal()+
+  coord_cartesian(ylim = c(0, 1200)) +
+  theme(panel.grid.major = element_blank(),
+        text = element_text(size=9))
+ 
+           
+```
 
+### Superficie de vivienda
+```{r  fig.height = 3 , fig.width = 6}
+
+provincias_orden_mediana_renta <- with(datos, reorder(provincia_806, stotalocal_14, median))
+
+datos %>% 
+  ggplot( aes(x=provincias_orden_mediana_renta, y =stotalocal_14))+
+  geom_boxplot( width = 0.5, fill = "cornsilk1", color = "cornsilk2",
+                linewidth = 0.6, outlier.size = 0.5, outlier.color = 0.4)+
+  labs(x = "", y = "") +
+  theme_minimal()+
+  coord_cartesian(ylim = c(0, 200)) +
+  theme(panel.grid.major = element_blank(),
+        text = element_text(size=9))
+ 
+           
+```
 
 <!-- ## Datos municipales -->
 <!-- ### Mapa municipios -->

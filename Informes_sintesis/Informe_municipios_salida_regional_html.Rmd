@@ -45,21 +45,6 @@ load(here("datos_output","datos_para_analisis_todos.RData"))  ##comentar/descome
 ```
 
 ```{r}
- # Filtra el año a utilizar. Aqui poner un combo
- anyos <- unique(datos_analisis$anyo)
-
- anyo_elegido <- svDialogs::dlg_list(choices = anyos,
-                                     preselect = max(anyos),
-                                     title = "Elige el año de informe:",
-                                     rstudio = getOption("svDialogs.rstudio", FALSE),
-                                     gui = .GUI)$res
-
- datos <- st_drop_geometry(datos_analisis) %>%
- filter(anyo == anyo_elegido)
-#rm(datos_analisis)
-```
-
-```{r}
 # Parámetros flextable
 init_flextable_defaults() #reinicia los valores por defecto del paq flextable
 set_flextable_defaults(
@@ -85,14 +70,27 @@ border_style2 = officer::fp_border(color="grey60", width=0.5)
 ```
 
 
+```{r}
+ # Filtra el año a utilizar. Aqui poner un combo
+ anyos <- unique(datos_analisis$anyo)
+
+ anyo_elegido <- svDialogs::dlg_list(choices = anyos,
+                                     preselect = max(anyos),
+                                     title = "Elige el año de informe:",
+                                     rstudio = getOption("svDialogs.rstudio", FALSE),
+                                     gui = .GUI)$res
+
+ datos <- st_drop_geometry(datos_analisis) %>%
+ filter(anyo == anyo_elegido)
+#rm(datos_analisis)
+```
 
 ```{r}
 ## Lee las funciones comunes
-source(here("Informes_publicaciones","Funciones_para_publicaciones.R"))
+source(here("Informes_sintesis","Funciones_para_publicaciones.R"))
 # Elabora listado de tablas por municipio y listado de mapas por municipio
-source(here("Informes_publicaciones","Elaboracion_contenidos_municipios.R"))
+source(here("Informes_sintesis","Elaboracion_contenidos_municipios.R"))
 ```
-
 ![](./images/portada.jpg){width="100%"}
 
 # **Actividad estadística de precios del alquiler basada en el registro de fianzas.**
@@ -101,15 +99,34 @@ source(here("Informes_publicaciones","Elaboracion_contenidos_municipios.R"))
    
  <font size="6"> Análisis por municipios.</font>
  
- 
-```{r leyenda_colores}
+## Mapa municipios de Andalucía
+
+```{r }
+construir_mapa_municipios(municipio_sf) 
+```
+
+## Datos municipales
+
+```{r}
+# Listado todos los municipios de Andalucía.
+#> Calcula m, media aritmética de las medianas municipales
+#>  (no incluye provincias ni comunidad)
 m <- t_m %>%
   filter(nombre != "") %>%
   summarise(media = mean(preciom2_M)) %>%
   pull() %>%
   round(1)
 
+#> Da color a las celdas del valor del precio medio de la renta x m2
+#> usando la función my_color_fun
+
+listado_municipios_andalucia %>%
+  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+
+```
+
 ### leyenda colores tabla datos municipales
+```{r leyenda_colores}
 # Definir el df que servirá como leyenda
 color <- c(m+3.5, m+1.5, m, m-1.5, m-3.5)
 
@@ -144,80 +161,34 @@ flextable(df, col_keys = c("Valores","descripcion")) %>%
 ```
 
 
+## Gráfico ránking muncipios con precio medio m2 superior a la mediana de Andalucía
+### Precio medio m2
+```{r fig.height = 5 , fig.width = 6}
+# Gráfico territorios > Mediana de Andalucía
+# t <- t %>%
+#   mutate(preciom2_M = as.numeric((gsub(",", ".", preciom2_M))))
 
-## Datos municipales por provincia
-### Almería
+medianaAndalucia <- t %>%
+  filter(territorio == "Andalucía") %>%
+  pull(preciom2_M)
 
-```{r}
-construir_mapa_municipios(municipio_sf %>% filter(provincia == "Almería"))
-```
+mayores <- t_m %>%
+  filter(preciom2_M >= medianaAndalucia)
 
-```{r}
-lista_flex_provincias[["Almería"]]  %>%
-  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
-```
-### Cádiz
-```{r}
-construir_mapa_municipios(municipio_sf %>% filter(provincia == "Cádiz"))
-```
 
-```{r}
-lista_flex_provincias[["Cádiz"]]  %>%
-  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
-```
-### Córdoba
-```{r}
-construir_mapa_municipios(municipio_sf %>% filter(provincia == "Córdoba"))
-```
-
-```{r}
-lista_flex_provincias[["Córdoba"]]  %>%
-  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
-```
-### Granada
-```{r}
-construir_mapa_municipios(municipio_sf %>% filter(provincia == "Granada"))
-```
-
-```{r}
-lista_flex_provincias[["Granada"]]  %>%
-  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
-```
-### Huelva
-```{r}
-construir_mapa_municipios(municipio_sf %>% filter(provincia == "Huelva"))
-```
-
-```{r}
-lista_flex_provincias[["Huelva"]]  %>%
-  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
-```
-### Jaén
-```{r}
-construir_mapa_municipios(municipio_sf %>% filter(provincia == "Jaén"))
-```
-
-```{r}
-lista_flex_provincias[["Jaén"]]  %>%
-  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
-```
-### Málaga
-```{r}
-construir_mapa_municipios(municipio_sf %>% filter(provincia == "Málaga"))
-```
-
-```{r}
-lista_flex_provincias[["Málaga"]]  %>%
-  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
-```
-### Sevilla
-```{r}
-construir_mapa_municipios(municipio_sf %>% filter(provincia == "Sevilla"))
-```
-
-```{r}
-lista_flex_provincias[["Sevilla"]]  %>%
-  bg(j = "preciom2_M", bg = my_color_fun , part = "body")  #color de fondo celdas
+grafico_ranking(mayores, preciom2_M) +
+theme(axis.text = element_text(size = 8))  # Cambiar el tamaño del texto de los ejes
 ```
 
 
+### Superficie de vivienda
+```{r}
+grafico_ranking(mayores, superficie_M)+
+theme(axis.text = element_text(size = 8))  # Cambiar el tamaño del texto de los ejes
+```
+
+### Renta mensual del alquiler
+```{r}
+grafico_ranking(mayores, preciomes_M)+
+theme(axis.text = element_text(size = 8))  # Cambiar el tamaño del texto de los ejes
+```

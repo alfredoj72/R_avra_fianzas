@@ -1,12 +1,3 @@
-#> ojo a las siguientes dudas
-#> No se han incluido como dimensiones superficie, precio, precio m2
-#> Se ha incluido ambitos POTA como dimension y no como territorio.
-#> Asociado a cada municipio he incluido el ambito POTA pero no se si sirve de algo
-#> y como afecta esto en BADEA. Debería hacer lo mismo con f.tam_pob????? si
-#> No se han considerado las secciones censales
-#> Se prodría reagrupar el constructo persona jurídica?
-#> 
-
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(sf,tidyverse,writexl,readxl)
 
@@ -45,8 +36,8 @@ dimensiones <- c("anyo", "f.durac_contrato","f.renta_alq", "f.renta_m2",
                  "sexo_arrendador", "f.persona_fj", "sexo_arrendatario",
                  "nacionalidad_arrendatario", "tipo_de_arrendamiento",
                  "f.super","f.hab","f.tipolog", "f.antig_bi",
-                 "f.tam_pob", "pota.tipo_unidad","pota.unidad_territorial",
-                 "pota.jerarquia")
+                 "f.tam_pob")
+     #, "pota.tipo_unidad","pota.unidad_territorial", "pota.jerarquia")
 
 
 # el anyo es un dimensión especial porque siempre hay que pivotar sobre ella,
@@ -65,7 +56,7 @@ datos_para_BADEA <- datos %>% select(all_of(c(dimensiones, territorio, medidas))
 
 # Paso las variables a formato texto
 datos_para_BADEA[c(dimensiones, territorio)] <- 
-    lapply(datos_para_BADEA[c(dimensiones, territorio)], as.character)
+  lapply(datos_para_BADEA[c(dimensiones, territorio)], as.character)
 
 
 # Si un campo por el que se agrupa tiene NA este también aparecerá en el resultado
@@ -96,12 +87,12 @@ datos_para_BADEA[is.na(datos_para_BADEA)] <- "No especificado"
 ###################################################################
 #> Definición de funciones para crear las combinaciones de campos y
 #> la generación de las tablas de salida para BADEA
- 
+
 
 # Calcula las combinaciones de campos desde tamaño 0 hasta n_campos
 obten_combinaciones_campos <- function(n_campos, lista_campos) {
   unlist(lapply(0:n_campos, function(n){combn(lista_campos,m=n, simplify = FALSE)} ),
-                            recursive = FALSE)
+         recursive = FALSE)
 }
 
 genera_BADEA <- function(df, campo_fijo = NULL, combinacion_campos){
@@ -152,45 +143,45 @@ genera_BADEA <- function(df, campo_fijo = NULL, combinacion_campos){
 # Traducir los valores que toma cada variable por el codigo que se usa en BADEA
 
 Recodifica_de_R_a_BADEA <- function(datos_badea){
-#Los valores NA de la tabla se deben a que no se hace uso de ninguna categoria
-# de la variable, por tanto, responden al valor No interviene
-datos_badea[is.na(datos_badea)] <- "No interviene"  
-#datos_badea[is.na(datos_badea)] <- "Total"
-
-
-# Leemos el fichero que contiene la información de traduccion de categorias
-# usadas en el estudio a categorias de BADEA
-cambio_modelo_datos <- read_excel("./datos_aux/Modelo datos BADEA.xlsx",
-                                  sheet = "Dimensiones",
-                                  skip = 11) %>% 
-  filter(!is.na(var))
-
-#names(cambio_modelo_datos)
-
-# diccionario para cambiar el contenido de las variables
-diccionario_badea <- cambio_modelo_datos %>% 
-  filter(!is.na(categ)) %>% 
-  select(var,categ,cod)
-
-
-# Cambio del contenido de la variables de acuerdo al diccionario cargado
-datos_badea <- datos_badea %>%
-  mutate(across(where(is.character), ~ 
-                  coalesce(deframe(subset(diccionario_badea, var == cur_column(), 
-                                          select= -var))[as.character(.)], as.character(.)
-                  )
-  )
-  )
-
-# # Diccionario para cambiar el contenido de las variables
-# rename_vec <- cambio_modelo_datos %>% 
-#   filter (is.na(categ) & is.na(cod)) %>% pull(var,descrip)
-# 
-# # Renombra las variables (creo que no es necesario, que BADEA reconoce las variables
-# # por el orden en que se introducen)
-# datos_badea <- datos_badea %>% 
-#   rename(all_of(rename_vec))
-
+  #Los valores NA de la tabla se deben a que no se hace uso de ninguna categoria
+  # de la variable, por tanto, responden al valor No interviene
+  datos_badea[is.na(datos_badea)] <- "No interviene"  
+  #datos_badea[is.na(datos_badea)] <- "Total"
+  
+  
+  # Leemos el fichero que contiene la información de traduccion de categorias
+  # usadas en el estudio a categorias de BADEA
+  cambio_modelo_datos <- read_excel("./datos_aux/Modelo datos BADEA.xlsx",
+                                    sheet = "Dimensiones",
+                                    skip = 11) %>% 
+    filter(!is.na(var))
+  
+  #names(cambio_modelo_datos)
+  
+  # diccionario para cambiar el contenido de las variables
+  diccionario_badea <- cambio_modelo_datos %>% 
+    filter(!is.na(categ)) %>% 
+    select(var,categ,cod)
+  
+  
+  # Cambio del contenido de la variables de acuerdo al diccionario cargado
+  datos_badea <- datos_badea %>%
+    mutate(across(where(is.character), ~ 
+                    coalesce(deframe(subset(diccionario_badea, var == cur_column(), 
+                                            select= -var))[as.character(.)], as.character(.)
+                    )
+    )
+    )
+  
+  # # Diccionario para cambiar el contenido de las variables
+  # rename_vec <- cambio_modelo_datos %>% 
+  #   filter (is.na(categ) & is.na(cod)) %>% pull(var,descrip)
+  # 
+  # # Renombra las variables (creo que no es necesario, que BADEA reconoce las variables
+  # # por el orden en que se introducen)
+  # datos_badea <- datos_badea %>% 
+  #   rename(all_of(rename_vec))
+  
 }
 
 
@@ -205,15 +196,16 @@ datos_badea <- datos_badea %>%
 #                                       c("pota.unidad_territorial", "anyo")]
 
 BADEA_mun <- genera_BADEA(datos_para_BADEA,c("anyo",
-                                        "cod_ine"),
+                                             "cod_ine"),
                           obten_combinaciones_campos(1,dimensiones_pivotantes))
 BADEA_mun <- BADEA_mun %>% rename(territorio = cod_ine) 
 
-#old
-# BADEA_mun <- genera_BADEA(datos_para_BADEA,"cod_ine",
-#                           obten_combinaciones_campos(1,dimensiones_sin_POTA))
-# BADEA_mun <- BADEA_mun %>% rename(territorio = cod_ine) %>% 
-#   mutate(pota.unidad_territorial = "", .before = "n")
+BADEA_mun <- BADEA_mun %>%
+  mutate(pota.tipo_unidad  = NA,
+         pota.unidad_territorial = NA,
+         pota.jerarquia = NA) %>% 
+  relocate(pota,pota.jerarquia, .after = territorio)
+
 
 
 BADEA_prov <- genera_BADEA(datos_para_BADEA, c("anyo","provincia_806"),
@@ -221,75 +213,43 @@ BADEA_prov <- genera_BADEA(datos_para_BADEA, c("anyo","provincia_806"),
 BADEA_prov <- BADEA_prov %>% rename(territorio = provincia_806)
 
 BADEA_andalucia <- genera_BADEA(datos_para_BADEA, "anyo", #antes NULL
-                           obten_combinaciones_campos(3, dimensiones_pivotantes))
+                                obten_combinaciones_campos(3, dimensiones_pivotantes))
 
 
 tabla_para_badea <- bind_rows(BADEA_mun, 
-                        BADEA_prov,
-                        BADEA_andalucia) %>% 
-                filter(n>=10) %>% 
-                
-                #elimino registros en los que se replica la información de tipo de unidad y unidad territorial
-                #en la tabla de salida ambos campos son una única dimensión
-                filter(!(!is.na(pota.tipo_unidad) & !is.na(pota.unidad_territorial))) %>%  
+                              BADEA_prov,
+                              BADEA_andalucia) %>% 
+  filter(n>=10) %>% 
   
-                Recodifica_de_R_a_BADEA() %>% 
-               
-                #Construye el nuevo campo que contiene información del tipo de unidad y de la unidad territorial
-                mutate(pota = coalesce(pota.tipo_unidad, pota.unidad_territorial),
-                       pota.tipo_unidad = NULL,
-                       pota.unidad_territorial = NULL) %>% 
-                relocate(pota, .before = "pota.jerarquia") %>% 
-                relocate(territorio, .before = "pota") %>% 
- 
-                select(-c(campos,pivote))
+  #elimino registros en los que se replica la información de tipo de unidad y unidad territorial
+  #en la tabla de salida ambos campos son una única dimensión
+  # filter(!(!is.na(pota.tipo_unidad) & !is.na(pota.unidad_territorial))) %>%  
+  
+  Recodifica_de_R_a_BADEA() %>% 
+  
+  #Construye el nuevo campo que contiene información del tipo de unidad y de la unidad territorial
+  mutate(pota = coalesce(pota.tipo_unidad, pota.unidad_territorial),
+         pota.tipo_unidad = NULL,
+         pota.unidad_territorial = NULL) %>%
+  relocate(pota, .before = "pota.jerarquia") %>%
+  relocate(territorio, .before = "pota") %>%
+  
+  select(-c(campos,pivote))
 
-# #comprobacion no hay combinaciones de campos duplicadas
+#tabla_para_badea <- janitor::clean_names(tabla_para_badea)
+
+# # #comprobacion no hay combinaciones de campos duplicadas
 # solo_dimensiones <- tabla_para_badea %>% select(-c(n:p75_precio_m2))
 # duplicados <- solo_dimensiones[duplicated(solo_dimensiones), ]
 
-
-write_xlsx(tabla_para_badea, "./datos_output/tabla_para_badea.xlsx")
-write.csv(tabla_para_badea, file = "./datos_output/tabla_para_badea.csv", row.names = FALSE)
-
-  
-
-
-
-# codigo de pruebas y sobrante---------***************************************
-kk <- BADEA_andalucia %>% filter(n >=10)
-BADEA_prov <- genera_BADEA(datos_para_BADEA,"provincia_806", obten_combinaciones_campos(2,dimensiones_sin_POTA))
-BADEA_mun <- genera_BADEA(datos_para_BADEA,"cod_ine", obten_combinaciones_campos(1,dimensiones_sin_POTA))
-
-BADEA_andalucia <- genera_BADEA(datos_para_BADEA, "anyo",
-                                obten_combinaciones_campos(1, dimensiones_sin_POTA))
-
-#plantear solo algunas variables? es decir, no todas las variables?
-BADEA_sec <- genera_BADEA(datos_para_BADEA,"seccion.codigo", obten_combinaciones_campos(1,dimensiones_sin_POTA))
-kk <- BADEA_sec %>% filter(n >=10)
+write.table(tabla_para_badea,
+            file = "./datos_output/tabla_para_badea.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = FALSE)
 
 
-BADEA_andalucia_F <- De_R_a_BADEA(BADEA_andalucia)
-
-dimensiones <- c("anyo", "f.durac_contrato","f.renta_alq", "f.renta_m2",
-                 "sexo_arrendador", "f.persona_fj", "sexo_arrendatario",
-                 "nacionalidad_arrendatario", "tipo_de_arrendamiento",
-                 "f.super","f.hab","f.tipolog", "f.antig_bi",
-                 "f.tam_pob", "pota.unidad_territorial")
-
-dimensiones <- c( "f.durac_contrato","f.renta_alq","pota.unidad_territorial")
-
-obten_combinaciones_campos(1,dimensiones)
-
-BADEA_prov <- genera_BADEA(datos_para_BADEA, c("anyo","provincia_806"),
-                           obten_combinaciones_campos(1,dimensiones))
-
-
-
-BADEA_mun <- genera_BADEA(datos_para_BADEA,c("anyo",
-                                        "cod_ine", 
-                                        "f.tam_pob"
-                                        ),
-                          obten_combinaciones_campos(1,dimensiones))
+# write_xlsx(tabla_para_badea, "./datos_output/tabla_para_badea.xlsx")
+# write.csv(tabla_para_badea, file = "./datos_output/tabla_para_badea.csv", row.names = FALSE)
 
 
