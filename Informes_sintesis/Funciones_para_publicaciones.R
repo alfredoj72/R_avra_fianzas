@@ -186,7 +186,7 @@ genera_resumen_municipios <- function(datos){
 
 
 genera_resumen_provincias <- function(datos){
-  
+  browser()
   d_prov <- genera_cruce_variables(datos, c("anyo","provincia_806"),
                                    list(character(0)))
   
@@ -434,17 +434,32 @@ crear_mapa_barrio <- function(barrios_de_un_municipio){
 #   return(out)
 # }
 
-# Otra forma de construir los colores que si va bien al generar word
-red_blue_palette <- colorRampPalette(c("red", "white", "blue"))
-colors_map <- red_blue_palette(5)
+
+# pal_colores <- colorNumeric(palette = "YlOrBr", domain = c(0,100))
+colores <- rev(hcl.colors(6,"YlOrBr"))
 my_color_fun <- function(x) {
-  out <- rep(colors_map[[1]], length(x)) # tb vale "red"
-  out[x <= m+3] <- colors_map[[2]]
-  out[x <= m+1] <- colors_map[[3]] #tb vale 'white' 
-  out[x <= m-1] <- colors_map[[4]]
-  out[x <= m-3] <- colors_map[[5]]
+  out <- rep("white", length(x)) # tb vale "red"
+  out[x < Inf] <- colores[[6]]
+  out[x < 10]  <- colores[[5]] #tb vale 'white' 
+  out[x < 8] <- colores[[4]]
+  out[x < 6] <- colores[[3]]
+  out[x < 4] <- colores[[2]]
+  out[x < 2] <- colores[[1]]
   return(out)
 }
+
+
+# # Otra forma de construir los colores que si va bien al generar word
+# red_blue_palette <- colorRampPalette(c("red", "white", "blue"))
+# colors_map <- red_blue_palette(5)
+# my_color_fun <- function(x) {
+#   out <- rep(colors_map[[1]], length(x)) # tb vale "red"
+#   out[x <= m+3] <- colors_map[[2]]
+#   out[x <= m+1] <- colors_map[[3]] #tb vale 'white' 
+#   out[x <= m-1] <- colors_map[[4]]
+#   out[x <= m-3] <- colors_map[[5]]
+#   return(out)
+# }
 
 
 
@@ -468,7 +483,6 @@ asignar_intervalo <- function(x, puntos_de_ruptura){
   
   return(NULL)  # Fuera de todos los intervalos
 }
-
 
 
 

@@ -14,7 +14,7 @@ pacman::p_load(tidyverse, flextable,here , sf, readxl,sf, glue, RColorBrewer,
                ggplot2, cowplot, leaflet)
 
 ## Lee las funciones
-#source(here("Informes_sintesis","Funciones_para_publicaciones.R"))
+source(here("Informes_sintesis","Funciones_para_publicaciones.R"))
 
 # Lee los datos
 load(here("datos_output","datos_para_analisis_todos.RData"))

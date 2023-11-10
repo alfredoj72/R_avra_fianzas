@@ -1,3 +1,5 @@
+# Genera la salida subida a BADEA el 05/10/2023.
+# Esta salida genera ÚNICO GRAN CUBO Y NO INCORPORA NINGUN DATO DEL POTA
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(sf,tidyverse,writexl,readxl)
 
@@ -204,7 +206,7 @@ BADEA_mun <- BADEA_mun %>%
   mutate(pota.tipo_unidad  = NA,
          pota.unidad_territorial = NA,
          pota.jerarquia = NA) %>% 
-  relocate(pota,pota.jerarquia, .after = territorio)
+  relocate(pota.tipo_unidad, pota.unidad_territorial ,pota.jerarquia, .after = territorio)
 
 
 
@@ -236,7 +238,18 @@ tabla_para_badea <- bind_rows(BADEA_mun,
   
   select(-c(campos,pivote))
 
-#tabla_para_badea <- janitor::clean_names(tabla_para_badea)
+ # tabla_para_badea <- janitor::clean_names(tabla_para_badea)
+ # colnames(tabla_para_badea) <- substr(names(tabla_para_badea), 1, 10)
+ # tabla_para_badea <- janitor::clean_names(tabla_para_badea)
+
+nombres_campos <- c("anyo", "durac",  "renta", "renta_m2", "sexo_ardor", 
+                    "tip_person", "sexo_arrio",  "nacionalid", "muebles", 
+                    "superf", "habitac", "tipolog_v", "antig_bi", "tam_pob",
+                    "territorio", "pota", "pota_jerar", "n", "m_precio",
+                    "p25_precio", "p75_precio", "m_superf", "p25_superf",
+                    "p75_superf",  "m_pre_m2", "p25_pre_m2", "p75_pre_m2")
+
+colnames(tabla_para_badea) <- nombres_campos
 
 # # #comprobacion no hay combinaciones de campos duplicadas
 # solo_dimensiones <- tabla_para_badea %>% select(-c(n:p75_precio_m2))
@@ -246,7 +259,7 @@ write.table(tabla_para_badea,
             file = "./datos_output/tabla_para_badea.txt",
             sep = "\t", 
             row.names = FALSE,
-            col.names = FALSE)
+            col.names = TRUE)
 
 
 # write_xlsx(tabla_para_badea, "./datos_output/tabla_para_badea.xlsx")

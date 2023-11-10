@@ -111,11 +111,7 @@ construir_mapa_municipios(municipio_sf)
 # Listado todos los municipios de Andalucía.
 #> Calcula m, media aritmética de las medianas municipales
 #>  (no incluye provincias ni comunidad)
-m <- t_m %>%
-  filter(nombre != "") %>%
-  summarise(media = mean(preciom2_M)) %>%
-  pull() %>%
-  round(1)
+
 
 #> Da color a las celdas del valor del precio medio de la renta x m2
 #> usando la función my_color_fun
@@ -127,36 +123,31 @@ listado_municipios_andalucia %>%
 
 ### leyenda colores tabla datos municipales
 ```{r leyenda_colores}
-# Definir el df que servirá como leyenda
-color <- c(m+3.5, m+1.5, m, m-1.5, m-3.5)
 
-valores <- c(glue("> {m+3}"),
-             glue("({m+1} - {m+3}]"),
-             glue("({m-1} - {m+1}]"),
-             glue("({m-3} - {m-1}]"),
-             glue("<= {m-3}"))
+
+### leyenda colores tabla datos municipales
+# Definir el df que servirá como leyenda
+color <- c(NA,1,3,5,7,9,11)
 
 # Definir el vector de descripciones
-descripcion <- c("3 o más € de la media de los municipios",
-                  "Entre 1 y 3 € más de la media de los municipio",
-                  paste("En la media +/- 1 € (Media =",m,"€)"),
-                  "Entre 1 y 3 € menos de la media de los municipio",
-                  "3 o menos € de la media de los municipios")
+
+descripcion <- c( "Sin datos", "[0 - 2)", "[2 - 4)", "[4 - 6)", "[6 - 8)","[8 - 10)",
+                 "[10 - )" )
 
 # Crear el dataframe
-df <- data.frame(color = color, Valores = valores, descripcion = descripcion)
+df <- data.frame(color = color, descripcion = descripcion)
 
 
 
 # Ver el dataframe resultante
-flextable(df, col_keys = c("Valores","descripcion")) %>%
+flextable(df, col_keys = c("aux","descripcion")) %>%
   fontsize(size = 9, part = "all") %>%
-  set_header_labels("Valores" = "Renta €/m2 mes" ,descripcion = "") %>%
+  set_header_labels("aux" = "Renta €/m2 mes" ,descripcion = "") %>%
   autofit() %>%
   border_remove() %>%
-  align(j="Valores", align = "center", part = "all") %>%
-  hline(part = "header", border = border_style1)  %>%
-  bg(j = "Valores", bg = my_color_fun(df$color) , part = "body")
+  align(j="aux", align = "center", part = "all") %>%
+#  hline(part = "header", border = border_style1)  %>%
+  bg(j = "aux", bg = my_color_fun(df$color) , part = "body")
 
 ```
 

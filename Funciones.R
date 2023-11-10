@@ -74,7 +74,82 @@ carga_datos_entrada <- function(){
   # Fin carga de datos
 }
 
+###############################################################################
 
+arreglar_municipios_pota <- function(){
+  
+  adsc_mun <- readxl::read_excel(
+    "datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
+    sheet = "adscripcion municipios",
+    col_types = rep("text", times = 11)
+  )
+  
+  campos <- tolower(colnames(adsc_mun))
+  campos <- gsub(" ", "_", campos)
+  colnames(adsc_mun) <- campos
+  
+  #Añade un cero y se queda con los 5 últimos dígitos
+  codigo <- paste0("0",adsc_mun$codigo_municipal)
+  codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
+  
+  adsc_mun <- adsc_mun %>% 
+    mutate(codigo_municipal = codigo,
+           pota.jerarquia = jerarquía_sistema_ciudades,
+           pota.tipo_unidad = tipo_de_unidad_territorial,
+           pota.unidad_territorial = unidad_territorial) %>% 
+    filter(!is.na(provincia)) %>% 
+    select(codigo_municipal, pota.jerarquia, pota.tipo_unidad, pota.unidad_territorial)
+  
+  # Identificar los municipios que no están en la tabla de adscrición de municipios
+  # al POTA. Son los segregados con posterioridad a la redacción del POTA
+  
+  datos_poblacion_2022 <- read.csv("datos_aux/datos_poblacion_2022.txt",
+                                   header= TRUE,
+                                   sep = ";",
+                                   colClasses = "character")
+  
+  datos_poblacion_2022 <- datos_poblacion_2022 %>%
+    rename(codigo_municipal = CODIGO_INE3,
+           nombre_municipio = Lugar.de.residencia,
+           pob_2022 = Valor) %>%
+    select(codigo_municipal)
+  ausentes_en_pota <- anti_join(datos_poblacion_2022, adsc_mun, by = "codigo_municipal")
+  
+  rm(datos_poblacion_2022, campos, codigo)
+  # write_xlsx(ausentes_en_pota, "./datos_output/municipios_NO_POTA.xlsx")
+  
+  
+  # Ahora leo la información de los municipios no incluidos en el listado pota
+  # y los añado.
+  
+  segregados <- readxl::read_excel("datos_aux/segragaciones_municipos.xlsx")
+  
+  # Añado a cada municipio el código del municipio del que se ha segregado
+  ausentes_en_pota <- left_join(ausentes_en_pota,
+                                segregados, 
+                                by = c("codigo_municipal" = "codigo_segregado"))
+  
+  # Añado a cada municipio la información POTA del municipio del que se ha segregado
+  ausentes_en_pota <- left_join(ausentes_en_pota,
+                                adsc_mun, 
+                                by = c("codigo_origen" = "codigo_municipal"))
+  
+  ausentes_en_pota <- ausentes_en_pota %>% 
+    select(codigo_municipal, pota.jerarquia,pota.tipo_unidad, pota.unidad_territorial)
+  
+  
+  # En los municipios segregados voy a asignales a todos la jerarquía ínfima
+  ausentes_en_pota$pota.jerarquia <- "Asentamiento cabecera municipal"
+  
+  #Añado los registros de los nuevos municipios a la tabla de adscripciones 
+  adsc_mun <- bind_rows(adsc_mun, ausentes_en_pota)
+  
+  writexl::write_xlsx(adsc_mun, "./datos_aux/municipios_POTA.xlsx")
+  
+  # Para usarlo
+  #  adsc_mun <- readxl::read_excel("datos_aux/municipios_POTA.xlsx")
+  
+}
 
 
 
@@ -1113,7 +1188,8 @@ salva_tablas_avra_catastro_alt <- function(datos, anyo) {
   
   #nombre_objeto <- deparse(substitute(datos))
   nombre_objeto <- glue("avra_catastro_{anyo}")
-  camino <- paste0("./datos_output/",nombre_objeto,"_")
+  #camino <- paste0("./datos_output/",nombre_objeto,"_")
+  camino <- paste0("./datos_output/xlsx/",nombre_objeto,"_")
   
   write_xlsx(avra_datos_originales, paste0(camino,"_1_originales.xlsx"))
   write_xlsx(avra_catastro, paste0(camino,"_2_avra_catastro.xlsx"))
@@ -1297,24 +1373,32 @@ preparacion_datos <- function(datos_entrada){
   # Además se define el campo como factor con todas unidades territoriales
   # para que aunque alguna no tenga casos aparezca en los listados
   
-  adsc_mun <- read_excel("datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
-                         sheet = "adscripcion municipios",
-                         col_types = rep("text", times = 11))
-  campos <- tolower(colnames(adsc_mun))
-  campos <- gsub(" ", "_", campos)
-  colnames(adsc_mun) <- campos
+  # adsc_mun <- read_excel("datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
+  #                        sheet = "adscripcion municipios",
+  #                        col_types = rep("text", times = 11))
+  # campos <- tolower(colnames(adsc_mun))
+  # campos <- gsub(" ", "_", campos)
+  # colnames(adsc_mun) <- campos
+  # 
+  # #Añade un cero y se queda con los 5 últimos dígitos
+  # codigo <- paste0("0",adsc_mun$codigo_municipal)
+  # codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
+  # 
+  # adsc_mun <- adsc_mun %>% 
+  #   mutate(codigo_municipal = codigo,
+  #          pota.jerarquia = jerarquía_sistema_ciudades,
+  #          pota.tipo_unidad = tipo_de_unidad_territorial,
+  #          pota.unidad_territorial = unidad_territorial) %>% 
+  #   filter(!is.na(provincia)) %>% 
+  #   select(codigo_municipal, pota.jerarquia, pota.tipo_unidad, pota.unidad_territorial)
   
-  #Añade un cero y se queda con los 5 últimos dígitos
-  codigo <- paste0("0",adsc_mun$codigo_municipal)
-  codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
+  if (!file.exists(here("datos_aux","municipios_POTA.xlsx"))) {
+    source("Funciones.R")
+    # Ejecuta el script para crear las capas 
+    arreglar_municipios_pota()
+  } 
   
-  adsc_mun <- adsc_mun %>% 
-    mutate(codigo_municipal = codigo,
-           pota.jerarquia = jerarquía_sistema_ciudades,
-           pota.tipo_unidad = tipo_de_unidad_territorial,
-           pota.unidad_territorial = unidad_territorial) %>% 
-    filter(!is.na(provincia)) %>% 
-    select(codigo_municipal, pota.jerarquia, pota.tipo_unidad, pota.unidad_territorial)
+  adsc_mun <- read_excel("datos_aux/municipios_POTA.xlsx")
   
   datos <-  left_join(datos, 
                       adsc_mun, 
@@ -1359,9 +1443,9 @@ preparacion_datos <- function(datos_entrada){
   datos <- st_join(datos, barrios_sf)
   datos <- st_join(datos, secciones_sf)
   
- 
-# definición de factores
-
+  
+  # definición de factores
+  
   ######## DEFINICION DE FACTORES ############
   #
   
@@ -1874,23 +1958,31 @@ Pasar_capas_shp_a_R <- function(){
   
   
   # obtengo la tabla de municipios con la adscripción al pota
-  adsc_mun <- read_excel("datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
-                         sheet = "adscripcion municipios",
-                         col_types = rep("text", times = 11))
-  campos <- tolower(colnames(adsc_mun))
-  campos <- gsub(" ", "_", campos)
-  colnames(adsc_mun) <- campos
+  # adsc_mun <- read_excel("datos_aux/adscripcion municipal definitiva CON POB Y SUP.xls",
+  #                        sheet = "adscripcion municipios",
+  #                        col_types = rep("text", times = 11))
+  # campos <- tolower(colnames(adsc_mun))
+  # campos <- gsub(" ", "_", campos)
+  # colnames(adsc_mun) <- campos
+  # 
+  # #Añade un cero y se queda con los 5 últimos dígitos
+  # codigo <- paste0("0",adsc_mun$codigo_municipal)
+  # codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
+  # 
+  # adsc_mun <- adsc_mun %>% 
+  #   mutate(codigo_municipal = codigo,
+  #          pota.jerarquia = jerarquía_sistema_ciudades,
+  #          pota.unidad_territorial = unidad_territorial) %>% 
+  #   filter(!is.na(provincia)) %>% 
+  #   select(codigo_municipal, pota.jerarquia, pota.unidad_territorial)
   
-  #Añade un cero y se queda con los 5 últimos dígitos
-  codigo <- paste0("0",adsc_mun$codigo_municipal)
-  codigo <- substr(codigo, nchar(codigo)-4, nchar(codigo) )
+  if (!file.exists(here("datos_aux","municipios_POTA.xlsx"))) {
+    source("Funciones.R")
+    # Ejecuta el script para crear las capas 
+    arreglar_municipios_pota()
+  } 
   
-  adsc_mun <- adsc_mun %>% 
-    mutate(codigo_municipal = codigo,
-           pota.jerarquia = jerarquía_sistema_ciudades,
-           pota.unidad_territorial = unidad_territorial) %>% 
-    filter(!is.na(provincia)) %>% 
-    select(codigo_municipal, pota.jerarquia, pota.unidad_territorial)
+  adsc_mun <- read_excel("datos_aux/municipios_POTA.xlsx")
   
   # añado a los municipios la información de adscripción al POTA  
   municipio_sf <-  left_join(municipio_sf, 

@@ -1,5 +1,8 @@
+#> La salida de este fichero no se ha llegado a subir nunca a BADEA
 #> ojo a las siguientes dudas
-#> No se han incluido como dimensiones superficie, precio, precio m2
+#> Genera un UNICO GRAN CUBO 
+#> considera todas las variables, incluso las del pota como dimensiones normales
+
 #> Se ha incluido ambitos POTA como dimension y no como territorio.
 #> Asociado a cada municipio he incluido el ambito POTA pero no se si sirve de algo
 #> y como afecta esto en BADEA. Debería hacer lo mismo con f.tam_pob????? si

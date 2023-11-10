@@ -1,12 +1,18 @@
 # Codigo usado para crear las tablas de diccionario con los nombres largos
 # de los campos
+# Crea una tabla en la que añade una columna e incluye los nombres de los campos
+# del dataframe
+# Luego lee la tabla una vez manipulada, en la que se ha incluido un nombre más
+# largo asociado a cada fila. Con dichos campos crea una función que a partir
+# del nombre corto genera obtiene el nombre largo. Esto sirve para mejorar el 
+# etiquetado de los gráficos y tablas
 
 rm(list =ls())
 load(file = "./datos_output/datos_para_analisis_2022.RData")
 
 datos <- datos_para_analisis_2022 ; rm(datos_para_analisis_2022)
 avra_datos_originales <- datos[["originales"]]
-avra_catastro <- datos[["Fianzas_viviendas"]]
+avra_catastro <- datos[["datos"]]
 
 # Creo un dataframe con una columna que contenga los nombres de los campos
 # y otra columna vacía para añadir las etiquetas
@@ -23,8 +29,8 @@ campos_avra_catastro <- data.frame(
 
 camino <- paste0("./datos_output/")
 
-write_xlsx(campos_avra, paste0(camino,"campos_avra_a_completar.xlsx"))
-write_xlsx(campos_avra_catastro, paste0(camino,"campos_avra_catastro_a_completar.xlsx"))
+writexl::write_xlsx(campos_avra, paste0(camino,"campos_avra_a_completar.xlsx"))
+writexl::write_xlsx(campos_avra_catastro, paste0(camino,"campos_avra_catastro_a_completar.xlsx"))
 
 # En excel completo la información de los campos de cada tabla.
 # Añado los campos etiqueta, origen y comentarios

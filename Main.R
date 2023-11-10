@@ -1,5 +1,5 @@
-# A partir de los datos de avra genera 3 tablas con los datos que casan con
-# 1 vivienda, los que casan con mas de 1 y los que no casan
+# En caso de usar ficheros Rmd ojo el directorio que se usa ya que las unidades de red mapeadas dan problemas.
+# De momento para uno tener problemas tengo que pasarme el proyecto a una carpeta en la unidad C y trabajar ahí.
 
 # Quitamos la notación científica
 options(scipen = 999) # Para que no use notación científica
@@ -67,22 +67,27 @@ datos_avra_crudos <- avra2018_2022   # Cabiar cuando se incluyan más años
 #load("avra_catastro_2018.Rdata")
 # #########################################################################
 
-# Los ficheros .RData generados en el proceso completo son:
+# Los ficheros .Rdata generados en el proceso completo son:
 # 
-#  datos.Rdata .................. Contiene los datos de excel crudos,
+#  datos_avra.Rdata ............. Contiene los datos de avra crudos,
 #                                 sin ningún proceso
 #  
-#  avra_catastro_xxxx.RData ..... Contiene los datos conectados con la información
+#  avra_catastro_xxxx.Rdata ..... Contiene los datos conectados con la información
 #                                 de catastro. Genera varias tablas: con los datos
 #                                 originales, con los datos conectados y segregando
 #                                 según el número de enlaces con catastro. Tb genera
 #                                 dos tablas con información de resumen de enlaces
 #                                 
-#  datos_para_analisis_xxxx.RData Contiene solo la tabla de viviendas que enlazan
+#  datos_para_analisis_xxxx.Rdata Contiene solo la tabla de viviendas que enlazan
 #                                 con una vivienda en catastro. Le añade campos,
 #                                 elimina registros no válidos. También contiene
 #                                 una tabla resumen con información del número de
 #                                 registros eliminados.
+#                                 
+#  datos_clean.Rdata............. Contiene todos los registros de la 
+#                                 tabla datos_para_analisis_todos.Rdata pero solo
+#                                 los campos que interesan para el shiny. Son básicamente
+#                                 solo los campos que se pasan a BADEA                       
 
  
 
@@ -117,9 +122,9 @@ assign(nombre_df, datos_para_analisis_anyo )
 save(list = nombre_df, file = glue("./datos_output/datos_para_analisis_{anyo_sel}.RData"))
 
 write_xlsx(datos_para_analisis_anyo[[1]], 
-            glue("./datos_output/avra_catastro_{anyo_sel}_8_datos_para_analisis.xlsx"))
+            glue("./datos_output/xlsx/avra_catastro_{anyo_sel}_8_datos_para_analisis.xlsx"))
 write_xlsx(datos_para_analisis_anyo[[2]], 
-           glue("./datos_output/avra_catastro_{anyo_sel}_8b_resumen_del_filtrado.xlsx"))
+           glue("./datos_output/xlsx/avra_catastro_{anyo_sel}_8b_resumen_del_filtrado.xlsx"))
 
 
 #Lee los dataframes construidos
@@ -184,9 +189,9 @@ proceso_completo_PARTE2 <- function(anyo_sel) {
   save(list = nombre_df, file = glue("./datos_output/datos_para_analisis_{anyo_sel}.RData"))
   
   write_xlsx(datos_para_analisis_anyo[[1]], 
-             glue("./datos_output/avra_catastro_{anyo_sel}_8_datos_para_analisis.xlsx"))
+             glue("./datos_output/xlsx/avra_catastro_{anyo_sel}_8_datos_para_analisis.xlsx"))
   write_xlsx(datos_para_analisis_anyo[[2]], 
-             glue("./datos_output/avra_catastro_{anyo_sel}_8b_resumen_del_filtrado.xlsx"))
+             glue("./datos_output/xlsx/avra_catastro_{anyo_sel}_8b_resumen_del_filtrado.xlsx"))
   
   
   #Lee los dataframes construidos
@@ -202,43 +207,8 @@ rm(anyo_sel)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ################################################################################
-# # Recopila los datos de todos los años y genera un df datos_analisis
+# # Recopila los datos_para_analisis de todos los años y genera un df datos_analisis_todos
 datos_analisis <- data.frame()
 for (anyo_sel in seq(2018,2022, 1)){  #c(2017,2018)
   #browser()
@@ -263,6 +233,44 @@ save(datos_analisis,
      file = "./datos_output/datos_para_analisis_todos.RData")
 
 #load(file = "./datos_output/datos_para_analisis_todos.RData")
+
+
+
+# Construcción de datos_clean.Rdata
+load(file = "./datos_output/datos_para_analisis_todos.RData")
+datos_con_geometria <- datos_analisis
+datos <- st_drop_geometry(datos_analisis)
+rm(datos_analisis)
+
+# old lista_campos
+dimensiones <- c("anyo", "f.durac_contrato","f.renta_alq", "f.renta_m2",
+                 "sexo_arrendador", "f.persona_fj", "sexo_arrendatario",
+                 "nacionalidad_arrendatario", "tipo_de_arrendamiento",
+                 "f.super","f.hab","f.tipolog", "f.antig_bi", "f.tam_pob",
+                 "pota.jerarquia","pota.tipo_unidad","pota.unidad_territorial")
+
+territorio <- c("provincia_806","cod_ine","seccion.codigo","barrio.codigo",
+                "barrio.distrito", "barrio.nombre")
+
+medidas <- c("importe_de_la_renta" , "stotalocal_14" , "renta_m2")
+
+# Me quedo con las variables que necesito
+datos_clean <- datos %>% select(all_of(c(dimensiones, territorio, medidas)))
+save(datos_clean, 
+     file = "./datos_output/datos_clean_todos.RData")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ################################################################################

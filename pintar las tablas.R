@@ -163,4 +163,6 @@ Relacion_ARRU %>%
 #------------------------------------------------------------------------------
 
 
-
+# De Case form a table form table(A,B)
+# xtabs(count ~A+B)
+# pob.

@@ -139,11 +139,53 @@ construir_mapa_municipios <- function(capa) {
                              domain = capa$f.renta_m2,
                              na.color = "white")
   
+  # popup <- ifelse(is.na(capa$f.renta_m2),
+  #                 str_glue("<b>{capa$nombre}</b><br> - sin datos"),
+  #                 str_glue("<b>{capa$nombre}</b><br> 
+  #                         <b>{capa$preciom2_M}</b> €/m2 <br>" )
+  # )
+
+  
+  #Preparo la cartela para los municipios que no disponen información de alquiler
+  file.copy("./html_aux/cartela_datos_basicos_un_anyo_nodatos.html",
+            "./html_aux/cartela_datos_basicos_un_anyo_nodatos.txt")
+  
+  html_sin_datos <- readLines("./html_aux/cartela_datos_basicos_un_anyo_nodatos.txt")
+  file.remove("./html_aux/cartela_datos_basicos_un_anyo_nodatos.txt")
+  html_sin_datos <- paste(html_sin_datos, collapse = "\n")
+  
+  # sustituir { por {{ y } por }} para escaparlos
+  html_sin_datos <- gsub("\\{", "{{", html_sin_datos)
+  html_sin_datos <- gsub("\\}", "}}", html_sin_datos)
+  
+  html_sin_datos <- gsub("Nombre", "{capa$cod_mun} - {capa$nombre}", html_sin_datos)
+  
+  
+  #Preparo la cartela para los municipios que SI disponen información de alquiler
+  file.copy("./html_aux/cartela_datos_basicos_un_anyo.html",
+            "./html_aux/cartela_datos_basicos_un_anyo.txt")
+  html_con_datos <- readLines("./html_aux/cartela_datos_basicos_un_anyo.html")
+  file.remove("./html_aux/cartela_datos_basicos_un_anyo.txt")
+  html_con_datos <- paste(html_con_datos, collapse = "\n")
+  
+  
+  html_con_datos <- gsub("\\{", "{{", html_con_datos)
+  html_con_datos <- gsub("\\}", "}}", html_con_datos)
+  
+  # sustituir los valores por los campos
+  html_con_datos <- gsub("Nombre", "{capa$cod_mun} - {capa$nombre}", html_con_datos)
+  html_con_datos <- gsub("rentam2_M", "{capa$preciom2_M}", html_con_datos)
+  html_con_datos <- gsub("rentam2_p", "[{capa$preciom2_p25} - {capa$preciom2_p75}]", html_con_datos)
+  html_con_datos <- gsub("rentames_M", "{capa$preciomes_M}", html_con_datos)
+  html_con_datos <- gsub("rentames_p", "[{capa$preciomes_p25} - {capa$preciomes_p75}]", html_con_datos)
+  html_con_datos <- gsub("superficie_M", "{capa$superficie_M}", html_con_datos)
+  html_con_datos <- gsub("superficie_p", "[{capa$superficie_p25} - {capa$superficie_p75}]", html_con_datos)
+  
   popup <- ifelse(is.na(capa$f.renta_m2),
-                  str_glue("<b>{capa$nombre}</b><br> - sin datos"),
-                  str_glue("<b>{capa$nombre}</b><br> 
-                          <b>{capa$preciom2_M}</b> €/m2 <br>" )
+                  str_glue(html_sin_datos),
+                  str_glue(html_con_datos )
   )
+ 
   
   label <- ifelse(is.na(capa$f.renta_m2), 
                   str_glue("{capa$nombre} ({capa$provincia}) - sin datos") ,

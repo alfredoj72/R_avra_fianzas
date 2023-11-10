@@ -13,9 +13,11 @@ rm(paq, paquetes_necesarios)
 
 
 rm(list =ls())
-#load("datos3.RData")
-load(file = "./datos_output/datos_para_analisis_2022.RData")
-Fianzas_viviendas <- datos_para_analisis_2022[[1]]
+load(file = "./datos_output/datos_para_analisis_todos.RData")
+Fianzas_viviendas <- datos_analisis %>% filter(anyo == 2022)
+
+#load(file = "./datos_output/datos_para_analisis_2022.RData")
+#Fianzas_viviendas <- datos_para_analisis_2022[[1]]
 # Fianzas_viviendas$x <- Fianzas_viviendas$coorx_25830
 # Fianzas_viviendas$y <- Fianzas_viviendas$coory_25830
 # 
