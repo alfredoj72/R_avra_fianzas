@@ -1,4 +1,4 @@
-# Genera la salida enviada a BADEA el 25/10/2023
+# Genera la salida enviada a BADEA el 14/11/2023
 # Genera microcubos enviado como prueba
 
 
@@ -329,13 +329,13 @@ genera_microcubo_pota <- function(combinaciones_campos){
                                       campo_fijo = c("anyo","pota.unidad_territorial"),
                                       combinaciones_campos)
   
-  BADEA_unidad <- BADEA_unidad %>% rename(territorio = pota.unidad_territorial) 
+  #BADEA_unidad <- BADEA_unidad %>% rename(territorio = pota.unidad_territorial) 
   
   BADEA_tipo_unidad <- genera_lineas_BADEA(datos_para_BADEA,
                                            campo_fijo = c("anyo","pota.tipo_unidad"),
                                            combinaciones_campos)
   
-  BADEA_tipo_unidad <- BADEA_tipo_unidad %>% rename(territorio = pota.tipo_unidad)
+  BADEA_tipo_unidad <- BADEA_tipo_unidad %>% rename(pota.unidad_territorial = pota.tipo_unidad)
   
   
   BADEA_andalucia <- genera_lineas_BADEA(datos_para_BADEA,
@@ -346,25 +346,27 @@ genera_microcubo_pota <- function(combinaciones_campos){
                                    BADEA_tipo_unidad,
                                    BADEA_andalucia) %>% 
     
-#    filter(n>=10) %>%   # No filtrar la información, se filtra con BADEA
+    #    filter(n>=10) %>%   # No filtrar la información, se filtra con BADEA
     
     Recodifica_de_R_a_BADEA() %>% 
     
+    rename(territorio = pota.unidad_territorial) %>% 
     relocate(territorio, .after = "anyo") %>%
     
     select(-c(campos,pivote))
   
-
-
-   # #n vez de filter (n>=10)
-   #  %>% 
-   #  mutate(across(
-   #    mediana_precio_mes:p75_precio_m2,
-   #    ~ ifelse(n <= 10, NA, .)
-   #  ))
+  #como hay registros en los datos origienales que responden  municipios cuyo
+  #ambito pota no se ha especificado
   
-    
-#renombrado de los campos
+  # #n vez de filter (n>=10)
+  #  %>% 
+  #  mutate(across(
+  #    mediana_precio_mes:p75_precio_m2,
+  #    ~ ifelse(n <= 10, NA, .)
+  #  ))
+  
+  
+  #renombrado de los campos
   rename_vec <- c(
     "durac" = "f.durac_contrato",
     "renta" = "f.renta_alq",
@@ -389,6 +391,7 @@ genera_microcubo_pota <- function(combinaciones_campos){
   
   return(tabla_formato_BADEA)
 }
+
 
 genera_microcubo_secciones <- function(combinaciones_campos){
   BADEA_seccion <- genera_lineas_BADEA(datos_para_BADEA,
@@ -654,11 +657,177 @@ write.table(cubo_BADEA_14714_jerarquia_ciudades,
 ######################################################################
 # y ejecuto salida por AMBITOS POTA
 
-# cubo_BADEA_14706_f.durac_contrato   
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14827_f.durac_contrato   
 combinaciones_campos <- obten_combinaciones_campos(
   n_campos = 1,
   lista_campos = "f.durac_contrato")
-cubo_BADEA_XXXX_f.durac_contrato <- genera_microcubo_pota(combinaciones_campos)
+cubo_pota_14827_f.durac_contrato   <- genera_microcubo_pota(combinaciones_campos)
+
+write.table(cubo_pota_14827_f.durac_contrato,
+            file = "./datos_output/cubo_pota_14827_f.durac_contrato.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+# write_xlsx(cubo_BADEA_14706_f.durac_contrato, "./datos_output/cubo_BADEA_14706_f.durac_contrato.xlsx")
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14830_renta_mes   
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 1,
+  lista_campos = "f.renta_alq")
+cubo_pota_14830_renta_mes   <- genera_microcubo_pota(combinaciones_campos)
+
+write.table(cubo_pota_14830_renta_mes,
+            file = "./datos_output/cubo_pota_14830_renta_mes.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14832_renta_m2  
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 1,
+  lista_campos = "f.renta_m2")
+cubo_pota_14832_renta_m2<- genera_microcubo_pota(combinaciones_campos)
+
+write.table(cubo_pota_14832_renta_m2,
+            file = "./datos_output/cubo_pota_14832_renta_m2.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14824_sexo_arrendador
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 1,
+  lista_campos = c("sexo_arrendador"))
+cubo_pota_14824_sexo_arrendador_1 <- genera_microcubo_pota(combinaciones_campos)
+
+# combinaciones_campos <- obten_combinaciones_campos(
+#   n_campos = 1,
+#   lista_campos = c("sexo_arrendador_jer"))
+# Ahora no tomo todas las combinaciones ya que se producirían registros duplicados
+combinaciones_campos <- c("sexo_arrendador_jer")
+cubo_pota_14824_sexo_arrendador_2 <- genera_microcubo_pota(combinaciones_campos)
+
+# cubo_BADEA_14702_sexo_arrendador_2 <- cubo_BADEA_14702_sexo_arrendador_2 %>% 
+#   rename(sexo_ardor = sexo_arrendador_jer)
+
+cubo_pota_14824_sexo_arrendador<- bind_rows(
+  cubo_pota_14824_sexo_arrendador_1,
+  cubo_pota_14824_sexo_arrendador_2
+)
+write.table(cubo_pota_14824_sexo_arrendador,
+            file = "./datos_output/cubo_pota_14824_sexo_arrendador.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14825_tipo_entidad
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 1,
+  lista_campos = c("f.persona_fj"))
+cubo_pota_14825_tipo_entidad_1 <- genera_microcubo_pota(combinaciones_campos)
+
+# combinaciones_campos <- obten_combinaciones_campos(
+#   n_campos = 1,
+#   lista_campos = c("f.persona_fj_jer"))
+# Ahora no tomo todas las combinaciones ya que se producirían registros duplicados
+combinaciones_campos <- c("f.persona_fj_jer")
+cubo_pota_14825_tipo_entidad_2 <- genera_microcubo_pota(combinaciones_campos)
+
+cubo_pota_14825_tipo_entidad <- bind_rows(
+  cubo_pota_14825_tipo_entidad_1,
+  cubo_pota_14825_tipo_entidad_2
+)
+
+write.table(cubo_pota_14825_tipo_entidad,
+            file = "./datos_output/cubo_pota_14825_tipo_entidad.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14826_sex_nac_arr
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 2,
+  lista_campos = c("sexo_arrendatario","nacionalidad_arrendatario"))
+cubo_pota_14826_sex_nac_arr<- genera_microcubo_pota(combinaciones_campos)
+
+write.table(cubo_pota_14826_sex_nac_arr,
+            file = "./datos_output/cubo_pota_14826_sex_nac_arr.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14839_tipo_construccion
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 1,
+  lista_campos = c("f.tipolog"))
+cubo_pota_14839_tipo_construccion<- genera_microcubo_pota(combinaciones_campos)
+
+write.table(cubo_pota_14839_tipo_construccion,
+            file = "./datos_output/cubo_pota_14839_tipo_construccion.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14833_tipo_inmueble
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 1,
+  lista_campos = c("tipo_de_arrendamiento"))
+cubo_pota_14833_tipo_inmueble <- genera_microcubo_pota(combinaciones_campos)
+
+write.table(cubo_pota_14833_tipo_inmueble,
+            file = "./datos_output/cubo_pota_14833_tipo_inmueble.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14835_superficie
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 1,
+  lista_campos = c("f.super"))
+cubo_pota_14835_superficie<- genera_microcubo_pota(combinaciones_campos)
+
+write.table(cubo_pota_14835_superficie,
+            file = "./datos_output/cubo_pota_14835_superficie.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14834_habitaciones
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 1,
+  lista_campos = c("f.hab"))
+cubo_pota_14834_habitaciones<- genera_microcubo_pota(combinaciones_campos)
+
+write.table(cubo_pota_14834_habitaciones,
+            file = "./datos_output/cubo_pota_14834_habitaciones.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
+
+#- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+# cubo_pota_14836_antiguedad
+combinaciones_campos <- obten_combinaciones_campos(
+  n_campos = 1,
+  lista_campos = c("f.antig_bi"))
+cubo_pota_14836_antiguedad <- genera_microcubo_pota(combinaciones_campos)
+
+write.table(cubo_pota_14836_antiguedad,
+            file = "./datos_output/cubo_pota_14836_antiguedad.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
 
 
 
@@ -666,10 +835,15 @@ cubo_BADEA_XXXX_f.durac_contrato <- genera_microcubo_pota(combinaciones_campos)
 ######################################################################
 # y ejecuto salida por SECCIONES CENSALES
 
-
-# cubo_BADEA_14706_f.durac_contrato   
+# cubo_BADEA_14820_tipo_construccion
 combinaciones_campos <- obten_combinaciones_campos(
   n_campos = 1,
-  lista_campos = "f.durac_contrato")
-cubo_secciones_YYYY_f.durac_contrato <- genera_microcubo_secciones(combinaciones_campos)
+  lista_campos = c("f.tipolog"))
+cubo_secciones_14820_tipo_construccion <- genera_microcubo_secciones(combinaciones_campos)
+
+write.table(cubo_secciones_14820_tipo_construccion,
+            file = "./datos_output/cubo_secciones_14820_tipo_construccion.txt",
+            sep = "\t", 
+            row.names = FALSE,
+            col.names = TRUE)
 
