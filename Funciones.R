@@ -1443,7 +1443,32 @@ preparacion_datos <- function(datos_entrada){
   datos <- st_join(datos, barrios_sf)
   datos <- st_join(datos, secciones_sf)
   
+  # PONER AQUI CONTROL PARA COMPROBAR QUE TODOS LOS DATOS SE ASOCIAN A ALGÚN
+  # BARRIO Y A ALGUNA SECCIÓN, EL QUE NO LO HAGA SE CORRIGE ANTES DE SEGUIR
   
+  sin_datos_secciones <- datos %>%
+    filter(is.na(seccion.codigo)) %>%
+    nrow()
+  
+  # Este codigo mete la sección correcta al registro que se encuentra en
+  # el puerto de benalmádena
+  datos <- datos %>% 
+    mutate(seccion.codigo = ifelse(rfcd_parcela == "290254814301UF6541S",
+                                   "2902503001", seccion.codigo),
+           seccion.distrito = ifelse(rfcd_parcela == "290254814301UF6541S",
+                                    "2902503", seccion.distrito)) 
+  
+  sin_datos_secciones <- datos %>%
+    filter(is.na(seccion.codigo)) %>%
+    nrow()
+  
+  if (sin_datos_secciones > 0) {
+    cat(paste("Existen", sin_datos_secciones, "registros que no se superponen a ninguna sección censal"))
+    cat("Debes arreglarlo o quitarlos del estudio")
+    Sys.sleep(50) 
+  }
+  
+  rm(sin_datos_secciones)
   # definición de factores
   
   ######## DEFINICION DE FACTORES ############
@@ -2008,3 +2033,4 @@ Pasar_capas_shp_a_R <- function(){
        file = here("datos_output","capas_para_mapas.Rdata"))
   
 }
+

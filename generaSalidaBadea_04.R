@@ -406,14 +406,19 @@ genera_microcubo_secciones <- function(combinaciones_campos){
   
   BADEA_distrito <- BADEA_distrito %>% rename(territorio = seccion.distrito)
   
+  BADEA_mun <- genera_lineas_BADEA(datos_para_BADEA,
+                                   campo_fijo = c("anyo","cod_ine"),
+                                   combinaciones_campos)
   
-  BADEA_andalucia <- genera_lineas_BADEA(datos_para_BADEA,
-                                         campo_fijo = c("anyo"),
-                                         combinaciones_campos)
+  BADEA_mun <- BADEA_mun %>% rename(territorio = cod_ine) 
+  
+  # BADEA_andalucia <- genera_lineas_BADEA(datos_para_BADEA,
+  #                                        campo_fijo = c("anyo"),
+  #                                        combinaciones_campos)
   
   tabla_formato_BADEA <- bind_rows(BADEA_seccion, 
                                    BADEA_distrito,
-                                   BADEA_andalucia) %>% 
+                                   BADEA_mun) %>% 
 #    filter(n>=10) %>% 
     
     Recodifica_de_R_a_BADEA() %>% 
@@ -841,9 +846,16 @@ combinaciones_campos <- obten_combinaciones_campos(
   lista_campos = c("f.tipolog"))
 cubo_secciones_14820_tipo_construccion <- genera_microcubo_secciones(combinaciones_campos)
 
+# # arreglo temporal , arreglar en la parte de superposición con la capa de secciones
+# cubo_secciones_14820_tipo_construccion <- cubo_secciones_14820_tipo_construccion %>% 
+#   filter(territorio != "No especificado")
+
 write.table(cubo_secciones_14820_tipo_construccion,
             file = "./datos_output/cubo_secciones_14820_tipo_construccion.txt",
             sep = "\t", 
             row.names = FALSE,
             col.names = TRUE)
 
+skimr::skim(cubo_secciones_14820_tipo_construccion)
+# naniar::vis_miss(cubo_secciones_14820_tipo_construccion)
+# naniar::gg_miss_upset(cubo_secciones_14820_tipo_construccion, nsets = 10, nintersects = 50)
