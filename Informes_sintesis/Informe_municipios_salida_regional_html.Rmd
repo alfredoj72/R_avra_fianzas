@@ -101,7 +101,7 @@ source(here("Informes_sintesis","Elaboracion_contenidos_municipios.R"))
  
 ## Mapa municipios de Andalucía
 
-```{r }
+```{r mapa}
 construir_mapa_municipios(municipio_sf) 
 ```
 

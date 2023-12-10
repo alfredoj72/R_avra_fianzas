@@ -186,7 +186,7 @@ genera_resumen_municipios <- function(datos){
 
 
 genera_resumen_provincias <- function(datos){
-  browser()
+ # browser()
   d_prov <- genera_cruce_variables(datos, c("anyo","provincia_806"),
                                    list(character(0)))
   
